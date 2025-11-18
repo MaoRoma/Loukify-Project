@@ -13,7 +13,6 @@ const emailValidator = [
 ];
 
 //OTP Validation
-//OTP Validation - accept either `otp` (6-digit) or `token` (also 6-digit for email code or longer for magiclink)
 const otpValidator = [
     body('email')
         .isEmail()
