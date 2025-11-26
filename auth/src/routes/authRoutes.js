@@ -1,6 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const { sendOtp, verifyOtp, signOut, getCurrentUser, refreshToken, signup, login, passwordResetRequest, passwordResetConfirm, emailValidator, otpValidator, signupValidator } = require('../controllers/authController');
+const { sendOtp, verifyOtp, signOut, getCurrentUser, refreshToken, signup, login, passwordResetRequest, passwordResetConfirm, initiateGoogleAuth, handleGoogleCallback, emailValidator, otpValidator, signupValidator } = require('../controllers/authController');
 const { authenticateToken, requireEmailVerified } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
@@ -48,6 +48,10 @@ router.get('/profile', authenticateToken, requireEmailVerified, (req, res) => {
         }
     });
 });
+
+// Google OAuth routes
+router.get('/google', authLimiter, initiateGoogleAuth);
+router.get('/google/callback', handleGoogleCallback);
 
 router.get('/health', (req, res) => {
     res.status(200).json({

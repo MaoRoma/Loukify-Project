@@ -264,6 +264,38 @@ const signup = async (req, res) => {
             return res.status(400).json({ success: false, message: result.error.message });
         }
 
+        // normalize user object for different supabase-js versions
+        const user = (result.data && result.data.user) || result.user || null;
+
+        // If signup returned a user, insert a profile row into the `users` table
+        if (user && user.id) {
+            try {
+                // derive first/last name from fullname if provided
+                let firstName = '';
+                let lastName = '';
+                if (fullname && typeof fullname === 'string') {
+                    const parts = fullname.trim().split(/\s+/);
+                    firstName = parts.shift() || '';
+                    lastName = parts.join(' ') || '';
+                }
+
+                const { data: insertData, error: insertError } = await supabase
+                    .from('users')
+                    .insert({
+                        user_id: user.id,
+                        first_name: firstName,
+                        last_name: lastName,
+                        email: user.email || email || '',
+                    });
+
+                if (insertError) {
+                    console.error('Error inserting profile row into users table:', insertError);
+                }
+            } catch (err) {
+                console.error('Unexpected error while inserting profile row:', err);
+            }
+        }
+
         return res.status(200).json({ success: true, message: 'Signup initiated', data: result.data || result });
     } catch (e) {
         console.error('Signup error:', e);
@@ -572,6 +604,163 @@ const refreshToken = async (req, res) => {
         });
     }
 };
+
+// Google OAuth: Initiate authentication
+const initiateGoogleAuth = async (req, res) => {
+    try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: process.env.GOOGLE_REDIRECT_URL || 'http://localhost:3000/auth/google/callback',
+                scopes: 'email profile'
+            }
+        });
+
+        if (error) {
+            console.error('Error initiating Google OAuth:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to initiate Google authentication',
+                error: error.message
+            });
+        }
+
+        // Supabase returns a URL to redirect the user to Google's OAuth consent screen
+        if (data && data.url) {
+            return res.status(200).json({
+                success: true,
+                message: 'Google authentication initiated',
+                data: {
+                    url: data.url
+                }
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'No redirect URL returned from Supabase'
+        });
+    } catch (e) {
+        console.error('Unexpected error in initiateGoogleAuth:', e);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: e.message
+        });
+    }
+};
+
+// Google OAuth: Handle callback and exchange code for session
+const handleGoogleCallback = async (req, res) => {
+    try {
+        // Extract code and state from query params (Supabase sends these after Google OAuth)
+        const { code, error: oauthError } = req.query;
+
+        if (oauthError) {
+            console.error('OAuth error from Google:', oauthError);
+            return res.status(400).json({
+                success: false,
+                message: 'Google authentication failed',
+                error: oauthError
+            });
+        }
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: 'Authorization code missing'
+            });
+        }
+
+        // Exchange code for session using Supabase
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+            console.error('Error exchanging code for session:', error);
+            return res.status(400).json({
+                success: false,
+                message: 'Failed to authenticate with Google',
+                error: error.message
+            });
+        }
+
+        const user = data?.user;
+        const session = data?.session;
+
+        if (!user || !session) {
+            return res.status(400).json({
+                success: false,
+                message: 'No user or session returned from Google authentication'
+            });
+        }
+
+        // Create/update user profile in users table
+        if (user.id) {
+            try {
+                // Extract name from Google user metadata
+                const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+                const firstName = user.user_metadata?.given_name || '';
+                const lastName = user.user_metadata?.family_name || '';
+                
+                // If first/last name not in metadata, split full_name
+                let derivedFirstName = firstName;
+                let derivedLastName = lastName;
+                if (!firstName && fullName) {
+                    const parts = fullName.trim().split(/\s+/);
+                    derivedFirstName = parts.shift() || '';
+                    derivedLastName = parts.join(' ') || '';
+                }
+
+                console.log('Creating/updating profile for Google user:', user.id);
+                const { data: upsertData, error: upsertError } = await supabase
+                    .from('users')
+                    .upsert({
+                        user_id: user.id,
+                        first_name: derivedFirstName,
+                        last_name: derivedLastName,
+                        email: user.email || '',
+                        phone_number: user.phone || ''
+                    }, { onConflict: ['user_id'] })
+                    .select();
+
+                console.log('Profile upsert response:', { upsertData, upsertError });
+                if (upsertError) {
+                    console.error('Error upserting Google user profile:', upsertError);
+                }
+            } catch (err) {
+                console.error('Unexpected error while upserting Google user profile:', err);
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Google authentication successful',
+            data: {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    email_confirmed_at: user.email_confirmed_at,
+                    created_at: user.created_at,
+                    user_metadata: user.user_metadata
+                },
+                session: {
+                    access_token: session.access_token,
+                    refresh_token: session.refresh_token,
+                    expires_at: session.expires_at,
+                    token_type: session.token_type
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Unexpected error in handleGoogleCallback:', e);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: e.message
+        });
+    }
+};
+
 module.exports = {
     sendOtp,
     verifyOtp,
@@ -582,6 +771,8 @@ module.exports = {
     login,
     passwordResetRequest,
     passwordResetConfirm,
+    initiateGoogleAuth,
+    handleGoogleCallback,
     emailValidator,
     otpValidator,
     signupValidator
