@@ -34,15 +34,6 @@ const HeroSection = () => {
                   Start Build Your Store
                 </Button>
               </Link>
-              <Link href="/LearnMore">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto border-stone-600 text-stone-600 hover:bg-[#D4D4D4] hover:text-stone-600 hover:scale-105 transition-all duration-300 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-sans font-semibold bg-transparent"
-                >
-                  Learn More
-                </Button>
-              </Link>
             </div>
           </div>
 
