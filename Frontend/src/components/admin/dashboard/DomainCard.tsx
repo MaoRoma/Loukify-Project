@@ -15,6 +15,7 @@ import { api } from "@/lib/api/config";
 export function DomainCard() {
   const [subdomain, setSubdomain] = useState("");
   const [storeUrl, setStoreUrl] = useState("");
+  const [testUrl, setTestUrl] = useState(""); // Path-based URL for immediate testing
   const [isPublished, setIsPublished] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -32,11 +33,17 @@ export function DomainCard() {
           const template = response.data;
           if (template.store_subdomain) {
             const url = `https://${template.store_subdomain}.loukify.com`;
+            // Path-based URL for immediate testing (works without DNS)
+            const testPathUrl = typeof window !== 'undefined' 
+              ? `${window.location.origin}/store/${template.store_subdomain}`
+              : `https://loukify-project-frontend.vercel.app/store/${template.store_subdomain}`;
             setStoreUrl(url);
+            setTestUrl(testPathUrl);
             setSubdomain(template.store_subdomain);
           } else {
             setSubdomain("");
             setStoreUrl("");
+            setTestUrl("");
           }
           setIsPublished(template.is_published);
         } else {
@@ -73,10 +80,15 @@ export function DomainCard() {
       const url = response?.store_url
         ? `https://${response.store_url}`
         : `https://${subdomain}.loukify.com`;
+      // Path-based URL for immediate testing
+      const testPathUrl = typeof window !== 'undefined' 
+        ? `${window.location.origin}/store/${subdomain}`
+        : `https://loukify-project-frontend.vercel.app/store/${subdomain}`;
       setStoreUrl(url);
+      setTestUrl(testPathUrl);
       setIsPublished(true);
       setCopySuccess(false);
-      alert(response?.message || `Store published at ${url}`);
+      alert(response?.message || `Store published!\n\nSubdomain URL: ${url}\nTest URL (works now): ${testPathUrl}`);
     } catch (err: any) {
       console.error("Failed to activate domain:", err);
       setError(err.message || "Failed to activate domain. Please try again.");
@@ -142,22 +154,63 @@ export function DomainCard() {
                 </div>
 
                 {storeUrl && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1"
-                      onClick={handleCopy}
-                    >
-                      {copySuccess ? "Copied!" : "Copy link"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => window.open(storeUrl, "_blank")}
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Store URL</p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="flex-1 px-3 py-2 bg-muted rounded-md text-xs font-mono truncate">
+                          {storeUrl}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => window.open(storeUrl, "_blank")}
+                          title="Open subdomain URL"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        ⚠️ Requires custom domain setup. Use test URL below for immediate access.
+                      </p>
+                    </div>
+                    
+                    {testUrl && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Test URL (Works Now)</p>
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="flex-1 px-3 py-2 bg-muted rounded-md text-xs font-mono truncate">
+                            {testUrl}
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(testUrl);
+                                setCopySuccess(true);
+                                setTimeout(() => setCopySuccess(false), 2000);
+                              } catch (err) {
+                                console.error("Failed to copy:", err);
+                              }
+                            }}
+                          >
+                            {copySuccess ? "Copied!" : "Copy"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => window.open(testUrl, "_blank")}
+                            title="Open test URL"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          ✅ Works immediately without DNS setup
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </>

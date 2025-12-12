@@ -41,8 +41,41 @@ router.get('/summary', authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/products/public
+ * List all active products (public endpoint for store pages)
+ */
+router.get('/public', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .select('*')
+      .eq('product_status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    // Format response
+    const formattedProducts = data.map(product => ({
+      id: product.id,
+      product_name: product.product_name,
+      product_description: product.product_description,
+      product_price: parseFloat(product.product_price) || 0,
+      product_category: product.product_category,
+      product_status: product.product_status,
+      product_image: product.product_image,
+      created_at: product.created_at,
+      updated_at: product.updated_at
+    }));
+
+    res.status(200).json({ success: true, data: formattedProducts });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to list products' });
+  }
+});
+
+/**
  * GET /api/products
- * List all products
+ * List all products (requires authentication)
  */
 router.get('/', authenticateToken, async (req, res) => {
   try {

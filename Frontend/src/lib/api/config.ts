@@ -127,6 +127,7 @@ export const api = {
   // Products API
   products: {
     getAll: () => apiRequest('/api/products'),
+    getPublic: () => apiRequest('/api/products/public'),
     getById: (id: string) => apiRequest(`/api/products/${id}`),
     create: (data: {
       product_name: string;
