@@ -93,20 +93,19 @@ export default function PublicStorePage() {
   };
 
   const typography = {
+    headingFont: "Inter",
+    bodyFont: "Inter",
     headingSize: 32,
     bodySize: 16,
-    fontFamily: "Inter, sans-serif",
   };
 
   const layout = {
     productsPerRow: 4,
-    spacing: "normal",
+    spacing: 24,
+    cardStyle: "minimal" as const,
   };
 
-  const buttonStyle = {
-    style: "rounded",
-    size: "medium",
-  };
+  const buttonStyle: "rounded" = "rounded";
 
   const sections = store.section_part || [];
   const header = store.header_part || {};
@@ -115,7 +114,7 @@ export default function PublicStorePage() {
   return (
     <div style={{ backgroundColor: colors.background, minHeight: "100vh" }}>
       <HomePage
-        themeId={null}
+        themeId={undefined}
         colors={colors}
         typography={typography}
         layout={layout}
