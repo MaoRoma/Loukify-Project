@@ -12,7 +12,17 @@
 import { supabase } from '../supabase/client';
 
 // Get API base URL from environment variable or use default
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// If NEXT_PUBLIC_API_URL is not set or points to localhost, use Next.js API routes
+const getApiBaseUrl = () => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+    // Use Next.js API routes (relative URLs)
+    return '';
+  }
+  return envUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Helper function to get the current session token from Supabase
@@ -107,12 +117,29 @@ export const apiRequest = async (
   } catch (error) {
     // Enhanced error logging
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      console.error('API Request failed - Network error. Is the backend server running?', {
+      const errorMessage = !API_BASE_URL || API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1')
+        ? 'Backend server is not configured. Please set NEXT_PUBLIC_API_URL in Vercel environment variables to your Railway backend URL (e.g., https://your-project.railway.app).'
+        : `Cannot connect to backend server at ${API_BASE_URL}. Please check if the backend is running and the URL is correct.`;
+      
+      console.error('API Request failed - Network error:', {
         endpoint,
-        baseUrl: API_BASE_URL,
-        fullUrl: `${API_BASE_URL}${endpoint}`
+        baseUrl: API_BASE_URL || '(using Next.js API routes)',
+        fullUrl: `${API_BASE_URL}${endpoint}`,
+        message: errorMessage
       });
-      throw new Error(`Cannot connect to backend server. Make sure it's running on ${API_BASE_URL}`);
+      
+      // Don't throw error for non-critical endpoints to prevent breaking the UI
+      // Return empty data instead
+      if (endpoint.includes('/settings') || endpoint.includes('/products') || endpoint.includes('/customers') || endpoint.includes('/store-templates')) {
+        console.warn('Returning empty data for failed API request:', endpoint);
+        // For store-templates, return null instead of empty array
+        if (endpoint.includes('/store-templates') && !endpoint.includes('/subdomain')) {
+          return { success: true, data: null };
+        }
+        return { success: true, data: [] };
+      }
+      
+      throw new Error(errorMessage);
     }
     console.error('API Request failed:', error);
     throw error;

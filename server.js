@@ -21,7 +21,13 @@ const PORT = process.env.PORT || 3001; // Changed to 3001 to avoid conflict with
 // Middleware - IMPORTANT: Don't use express.json() for routes that handle file uploads
 // CORS configuration to allow frontend (Next.js) to make requests
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000', // Next.js runs on port 3000
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://loukify.website',
+    /^https:\/\/.*\.loukify\.website$/,
+    'https://loukify-project-frontend.vercel.app',
+    /^https:\/\/loukify-project-frontend.*\.vercel\.app$/
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

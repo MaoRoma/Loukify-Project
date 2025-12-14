@@ -100,6 +100,10 @@ export function ThemeCustomizer() {
         if (response?.data) {
           setStoreName(response.data.store_name || "");
           setStoreSubdomain(response.data.store_subdomain || "");
+          // Update header with store name if it exists
+          if (response.data.store_name) {
+            setHeader(prev => ({ ...prev, logoText: response.data.store_name }));
+          }
         }
       } catch (error) {
         console.error("Failed to load store template:", error);
@@ -108,6 +112,13 @@ export function ThemeCustomizer() {
 
     fetchStoreTemplate();
   }, []);
+
+  // Sync store name to header logo text in real-time
+  useEffect(() => {
+    if (storeName) {
+      setHeader(prev => ({ ...prev, logoText: storeName }));
+    }
+  }, [storeName]);
 
   const tabs = [
     { id: "theme", label: "Theme", icon: Palette },
