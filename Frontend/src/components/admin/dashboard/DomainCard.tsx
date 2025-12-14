@@ -32,7 +32,7 @@ export function DomainCard() {
           setHasStore(true);
           const template = response.data;
           if (template.store_subdomain) {
-            const url = `https://${template.store_subdomain}.loukify.com`;
+            const url = `https://${template.store_subdomain}.loukify.website`;
             // Path-based URL for immediate testing (works without DNS)
             const testPathUrl = typeof window !== 'undefined' 
               ? `${window.location.origin}/store/${template.store_subdomain}`
@@ -79,7 +79,7 @@ export function DomainCard() {
       const response = await api.storeTemplates.publish({ store_subdomain: subdomain });
       const url = response?.store_url
         ? `https://${response.store_url}`
-        : `https://${subdomain}.loukify.com`;
+        : `https://${subdomain}.loukify.website`;
       // Path-based URL for immediate testing
       const testPathUrl = typeof window !== 'undefined' 
         ? `${window.location.origin}/store/${subdomain}`
@@ -145,7 +145,7 @@ export function DomainCard() {
                       className="pr-28"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      .loukify.com
+                      .loukify.website
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">

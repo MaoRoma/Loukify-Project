@@ -273,7 +273,7 @@ router.put('/publish', authenticateToken, async (req, res) => {
       success: true, 
       data,
       message: 'Store published successfully!',
-      store_url: store_subdomain ? `${store_subdomain}.loukify.com` : null
+      store_url: store_subdomain ? `${store_subdomain}.loukify.website` : null
     });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to publish store' });

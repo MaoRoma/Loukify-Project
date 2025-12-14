@@ -30,14 +30,14 @@ export function middleware(request: NextRequest) {
   }
 
   // Extract subdomain from hostname
-  // Format: subdomain.loukify.com or custom domain subdomains
+  // Format: subdomain.loukify.website or custom domain subdomains
   const parts = hostname.split('.');
   
   // Check if this is a subdomain request
   let subdomain: string | null = null;
   
-  // Handle custom domains (e.g., subdomain.loukify.com)
-  if (hostname.includes('.loukify.com')) {
+  // Handle custom domains (e.g., subdomain.loukify.website)
+  if (hostname.includes('.loukify.website')) {
     subdomain = parts[0];
     // Skip if it's the main domain (www or just loukify)
     if (subdomain === 'www' || subdomain === 'loukify' || subdomain === '') {

@@ -23,7 +23,7 @@ const setupItems = [
   },
   {
     title: "Customize your domain",
-    description: "yourstore.loukify.com",
+    description: "yourstore.loukify.website",
     icon: Globe,
     buttonText: "Customize",
   },

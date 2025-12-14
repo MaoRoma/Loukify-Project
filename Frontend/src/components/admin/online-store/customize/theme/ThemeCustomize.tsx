@@ -190,7 +190,7 @@ export function ThemeCustomizer() {
       const publishResponse = await api.storeTemplates.publish({ store_subdomain: domain });
       const storeUrl = publishResponse?.store_url
         ? `https://${publishResponse.store_url}`
-        : `https://${domain}.loukify.com`;
+        : `https://${domain}.loukify.website`;
 
       alert(publishResponse?.message || `Store published at ${storeUrl}`);
       router.push("/admin/dashboard");
@@ -268,7 +268,7 @@ export function ThemeCustomizer() {
                     className="pr-28"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    .loukify.com
+                    .loukify.website
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
