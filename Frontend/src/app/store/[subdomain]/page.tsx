@@ -7,6 +7,9 @@ import { HomePage } from "@/components/admin/online-store/customize/preview/Home
 import { Loader2 } from "lucide-react";
 import { CartProvider } from "@/lib/context/CartContext";
 import { WishlistProvider } from "@/lib/context/WishlistContext";
+import { PreviewHeader } from "@/components/admin/online-store/customize/preview/PreviewHeader";
+import { PreviewFooter } from "@/components/admin/online-store/customize/preview/PreviewFooter";
+import type { HeaderConfig, FooterConfig } from "@/lib/types/Theme";
 
 interface StoreTemplate {
   id: string;
@@ -113,10 +116,57 @@ export default function PublicStorePage() {
   const header = store.header_part || {};
   const footer = store.footer_part || {};
 
+  // Safe defaults for header/footer to avoid missing fields
+  const headerConfig: HeaderConfig = {
+    logoText: header.logoText || store.store_name || "Store",
+    layout: header.layout || "classic",
+    showAnnouncement: header.showAnnouncement ?? false,
+    announcementText: header.announcementText || "",
+    navigationItems: header.navigationItems || ["Home", "Shop", "About", "Contact"],
+    showSearchBar: header.showSearchBar ?? true,
+    showWishlistIcon: header.showWishlistIcon ?? true,
+  };
+
+  const footerDefaults: FooterConfig = {
+    columns: footer.columns || 3,
+    backgroundColor: footer.backgroundColor || colors.background,
+    columnSettings: footer.columnSettings || {
+      column1: { title: "Company", links: [] },
+      column2: { title: "Support", links: [] },
+      column3: { title: "Legal", links: [] },
+      column4: { title: "More", links: [] },
+    },
+    showNewsletter: footer.showNewsletter ?? false,
+    newsletterTitle: footer.newsletterTitle || "",
+    newsletterDescription: footer.newsletterDescription || "",
+    showSocialIcons: footer.showSocialIcons ?? false,
+    socialLinks: footer.socialLinks || {
+      facebook: "",
+      instagram: "",
+      twitter: "",
+      linkedin: "",
+    },
+    contactInfo: footer.contactInfo || {
+      email: "",
+      phone: "",
+      address: "",
+    },
+    showPaymentIcons: footer.showPaymentIcons ?? false,
+    copyrightText:
+      footer.copyrightText || "© 2024 Loukify. All rights reserved.",
+  };
+
   return (
     <CartProvider>
       <WishlistProvider>
         <div style={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+          <PreviewHeader
+            colors={colors}
+            typography={typography}
+            header={headerConfig}
+            onCartClick={() => {}}
+            onWishlistClick={() => {}}
+          />
           <HomePage
             themeId={undefined}
             colors={colors}
@@ -124,6 +174,13 @@ export default function PublicStorePage() {
             layout={layout}
             buttonStyle={buttonStyle}
             sections={sections}
+            viewMode="desktop"
+          />
+          <PreviewFooter
+            colors={colors}
+            typography={typography}
+            footer={footerDefaults}
+            buttonStyle={buttonStyle}
             viewMode="desktop"
           />
         </div>
