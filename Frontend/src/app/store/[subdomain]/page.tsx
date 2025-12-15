@@ -9,6 +9,7 @@ import { CartProvider } from "@/lib/context/CartContext";
 import { WishlistProvider } from "@/lib/context/WishlistContext";
 import { PreviewHeader } from "@/components/admin/online-store/customize/preview/PreviewHeader";
 import { PreviewFooter } from "@/components/admin/online-store/customize/preview/PreviewFooter";
+import { ProductDetailPage } from "@/components/admin/online-store/customize/preview/ProductDetailPage";
 import type { HeaderConfig, FooterConfig } from "@/lib/types/Theme";
 
 interface StoreTemplate {
@@ -28,12 +29,25 @@ interface StoreTemplate {
   is_published: boolean;
 }
 
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  description?: string;
+  category?: string;
+  stock?: string;
+  rating?: number;
+  reviews?: number;
+}
+
 export default function PublicStorePage() {
   const params = useParams();
   const subdomain = params?.subdomain as string;
   const [store, setStore] = useState<StoreTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -51,6 +65,24 @@ export default function PublicStorePage() {
           setStore(response.data);
         } else {
           setError("Store not found");
+        }
+
+        // Load public products for this store (if backend is configured)
+        try {
+          const productsResponse = await api.products.getPublic();
+          const apiProducts = productsResponse?.data || [];
+          const mappedProducts: Product[] = apiProducts.map((p: any) => ({
+            id: p.id,
+            name: p.product_name || "Product",
+            price: Number(p.product_price) || 0,
+            description: p.product_description || "",
+            category: p.product_category || "",
+            stock: p.product_status === "active" ? "In Stock" : p.product_status,
+          }));
+          setProducts(mappedProducts);
+        } catch (productError) {
+          console.error("Failed to load public products:", productError);
+          // Don't block store rendering if products fail
         }
       } catch (err: any) {
         console.error("Failed to fetch store:", err);
@@ -112,7 +144,12 @@ export default function PublicStorePage() {
 
   const buttonStyle: "rounded" = "rounded";
 
-  const sections = store.section_part || [];
+  const rawSections = store.section_part || [];
+  const hasProducts = products.length > 0;
+  // When real products exist, hide the demo \"featured-products\" section
+  const sections = hasProducts
+    ? rawSections.filter((section: any) => section.type !== "featured-products")
+    : rawSections;
   const header = store.header_part || {};
   const footer = store.footer_part || {};
 
@@ -156,6 +193,40 @@ export default function PublicStorePage() {
       footer.copyrightText || "© 2024 Loukify. All rights reserved.",
   };
 
+  // When viewing a single product, show dedicated product detail page
+  if (selectedProduct) {
+    return (
+      <CartProvider>
+        <WishlistProvider>
+          <div style={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+            <PreviewHeader
+              colors={colors}
+              typography={typography}
+              header={headerConfig}
+              onCartClick={() => {}}
+              onWishlistClick={() => {}}
+              onProductClick={(product) => setSelectedProduct(product)}
+            />
+            <ProductDetailPage
+              colors={colors}
+              typography={typography}
+              buttonStyle={buttonStyle}
+              product={selectedProduct}
+              onBack={() => setSelectedProduct(null)}
+            />
+            <PreviewFooter
+              colors={colors}
+              typography={typography}
+              footer={footerDefaults}
+              buttonStyle={buttonStyle}
+              viewMode="desktop"
+            />
+          </div>
+        </WishlistProvider>
+      </CartProvider>
+    );
+  }
+
   return (
     <CartProvider>
       <WishlistProvider>
@@ -166,6 +237,7 @@ export default function PublicStorePage() {
             header={headerConfig}
             onCartClick={() => {}}
             onWishlistClick={() => {}}
+            onProductClick={(product) => setSelectedProduct(product)}
           />
           <HomePage
             themeId={undefined}
@@ -176,6 +248,74 @@ export default function PublicStorePage() {
             sections={sections}
             viewMode="desktop"
           />
+          {/* Dynamic products from your catalog */}
+          {products.length > 0 && (
+            <section className="px-6 py-16 max-w-6xl mx-auto">
+              <h2
+                className="text-2xl font-bold mb-6 text-center"
+                style={{ color: colors.text, fontFamily: typography.headingFont }}
+              >
+                Our Products
+              </h2>
+              <div
+                className="grid gap-6"
+                style={{
+                  gridTemplateColumns: `repeat(${Math.min(
+                    products.length,
+                    layout.productsPerRow
+                  )}, minmax(0, 1fr))`,
+                }}
+              >
+                {products.map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => setSelectedProduct(product)}
+                    className="bg-white border rounded-lg overflow-hidden flex flex-col text-left hover:shadow-md transition-shadow cursor-pointer"
+                    style={{ borderColor: colors.secondary }}
+                  >
+                    <div className="aspect-square bg-gray-100 flex items-center justify-center">
+                      <svg
+                        className="w-12 h-12 text-gray-300"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                      </svg>
+                    </div>
+                    <div className="p-4 space-y-1">
+                      <h3
+                        className="font-semibold truncate"
+                        style={{
+                          color: colors.text,
+                          fontFamily: typography.bodyFont,
+                          fontSize: `${typography.bodySize}px`,
+                        }}
+                      >
+                        {product.name}
+                      </h3>
+                      <p
+                        className="font-bold"
+                        style={{
+                          color: colors.primary,
+                          fontSize: `${typography.bodySize}px`,
+                        }}
+                      >
+                        ${product.price.toFixed(2)}
+                      </p>
+                      {product.category && (
+                        <p
+                          className="text-xs opacity-70"
+                          style={{ color: colors.secondary }}
+                        >
+                          {product.category}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
           <PreviewFooter
             colors={colors}
             typography={typography}
