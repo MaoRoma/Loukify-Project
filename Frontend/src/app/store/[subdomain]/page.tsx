@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { api } from "@/lib/api/config";
 import { HomePage } from "@/components/admin/online-store/customize/preview/HomePageStore";
 import { Loader2 } from "lucide-react";
+import { CartProvider } from "@/lib/context/CartContext";
+import { WishlistProvider } from "@/lib/context/WishlistContext";
 
 interface StoreTemplate {
   id: string;
@@ -112,17 +114,21 @@ export default function PublicStorePage() {
   const footer = store.footer_part || {};
 
   return (
-    <div style={{ backgroundColor: colors.background, minHeight: "100vh" }}>
-      <HomePage
-        themeId={undefined}
-        colors={colors}
-        typography={typography}
-        layout={layout}
-        buttonStyle={buttonStyle}
-        sections={sections}
-        viewMode="desktop"
-      />
-    </div>
+    <CartProvider>
+      <WishlistProvider>
+        <div style={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+          <HomePage
+            themeId={undefined}
+            colors={colors}
+            typography={typography}
+            layout={layout}
+            buttonStyle={buttonStyle}
+            sections={sections}
+            viewMode="desktop"
+          />
+        </div>
+      </WishlistProvider>
+    </CartProvider>
   );
 }
 
