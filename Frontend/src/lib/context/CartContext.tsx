@@ -5,7 +5,7 @@ import type { CartItem } from "@/lib/types/Theme";
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: { id: number; name: string; price: number }) => void;
+  addToCart: (product: { id: number; name: string; price: number; image?: string }) => void;
   updateQuantity: (id: number, change: number) => void;
   removeFromCart: (id: number) => void;
   clearCart: () => void;
@@ -19,7 +19,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  const addToCart = (product: { id: number; name: string; price: number }) => {
+  const addToCart = (product: { id: number; name: string; price: number; image?: string }) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
       if (existingItem) {

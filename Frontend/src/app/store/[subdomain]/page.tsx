@@ -10,6 +10,8 @@ import { WishlistProvider } from "@/lib/context/WishlistContext";
 import { PreviewHeader } from "@/components/admin/online-store/customize/preview/PreviewHeader";
 import { PreviewFooter } from "@/components/admin/online-store/customize/preview/PreviewFooter";
 import { ProductDetailPage } from "@/components/admin/online-store/customize/preview/ProductDetailPage";
+import { CartPage } from "@/components/admin/online-store/customize/preview/CartPage";
+import { CheckoutPage } from "@/components/admin/online-store/customize/preview/CheckoutPageStore";
 import type { HeaderConfig, FooterConfig } from "@/lib/types/Theme";
 
 interface StoreTemplate {
@@ -38,6 +40,7 @@ interface Product {
   stock?: string;
   rating?: number;
   reviews?: number;
+  image?: string;
 }
 
 export default function PublicStorePage() {
@@ -48,6 +51,7 @@ export default function PublicStorePage() {
   const [error, setError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [currentView, setCurrentView] = useState<"home" | "cart" | "checkout" | "product">("home");
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -78,6 +82,7 @@ export default function PublicStorePage() {
             description: p.product_description || "",
             category: p.product_category || "",
             stock: p.product_status === "active" ? "In Stock" : p.product_status,
+            image: p.product_image || null,
           }));
           setProducts(mappedProducts);
         } catch (productError) {
@@ -193,8 +198,37 @@ export default function PublicStorePage() {
       footer.copyrightText || "© 2024 Loukify. All rights reserved.",
   };
 
-  // When viewing a single product, show dedicated product detail page
-  if (selectedProduct) {
+  // Navigation handlers
+  const handleCartClick = () => {
+    setCurrentView("cart");
+    setSelectedProduct(null);
+  };
+
+  const handleCheckout = () => {
+    setCurrentView("checkout");
+  };
+
+  const handleContinueShopping = () => {
+    setCurrentView("home");
+    setSelectedProduct(null);
+  };
+
+  const handleBackToCart = () => {
+    setCurrentView("cart");
+  };
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setCurrentView("product");
+  };
+
+  const handleBackToProducts = () => {
+    setSelectedProduct(null);
+    setCurrentView("home");
+  };
+
+  // When viewing checkout page
+  if (currentView === "checkout") {
     return (
       <CartProvider>
         <WishlistProvider>
@@ -203,16 +237,89 @@ export default function PublicStorePage() {
               colors={colors}
               typography={typography}
               header={headerConfig}
-              onCartClick={() => {}}
+              onCartClick={handleCartClick}
               onWishlistClick={() => {}}
-              onProductClick={(product) => setSelectedProduct(product)}
+              onProductClick={handleProductClick}
+            />
+            <CheckoutPage
+              colors={colors}
+              typography={typography}
+              buttonStyle={buttonStyle}
+              onBackToCart={handleBackToCart}
+              onConfirmOrder={() => {
+                // After order confirmation, go back to home
+                setCurrentView("home");
+                setSelectedProduct(null);
+              }}
+            />
+            <PreviewFooter
+              colors={colors}
+              typography={typography}
+              footer={footerDefaults}
+              buttonStyle={buttonStyle}
+              viewMode="desktop"
+            />
+          </div>
+        </WishlistProvider>
+      </CartProvider>
+    );
+  }
+
+  // When viewing cart page
+  if (currentView === "cart") {
+    return (
+      <CartProvider>
+        <WishlistProvider>
+          <div style={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+            <PreviewHeader
+              colors={colors}
+              typography={typography}
+              header={headerConfig}
+              onCartClick={handleCartClick}
+              onWishlistClick={() => {}}
+              onProductClick={handleProductClick}
+            />
+            <CartPage
+              colors={colors}
+              typography={typography}
+              buttonStyle={buttonStyle}
+              onContinueShopping={handleContinueShopping}
+              onCheckout={handleCheckout}
+            />
+            <PreviewFooter
+              colors={colors}
+              typography={typography}
+              footer={footerDefaults}
+              buttonStyle={buttonStyle}
+              viewMode="desktop"
+            />
+          </div>
+        </WishlistProvider>
+      </CartProvider>
+    );
+  }
+
+  // When viewing a single product, show dedicated product detail page
+  if (currentView === "product" && selectedProduct) {
+    return (
+      <CartProvider>
+        <WishlistProvider>
+          <div style={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+            <PreviewHeader
+              colors={colors}
+              typography={typography}
+              header={headerConfig}
+              onCartClick={handleCartClick}
+              onWishlistClick={() => {}}
+              onProductClick={handleProductClick}
             />
             <ProductDetailPage
               colors={colors}
               typography={typography}
               buttonStyle={buttonStyle}
               product={selectedProduct}
-              onBack={() => setSelectedProduct(null)}
+              onBack={handleBackToProducts}
+              onAddToCart={handleCartClick}
             />
             <PreviewFooter
               colors={colors}
@@ -235,9 +342,9 @@ export default function PublicStorePage() {
             colors={colors}
             typography={typography}
             header={headerConfig}
-            onCartClick={() => {}}
+            onCartClick={handleCartClick}
             onWishlistClick={() => {}}
-            onProductClick={(product) => setSelectedProduct(product)}
+            onProductClick={handleProductClick}
           />
           <HomePage
             themeId={undefined}
@@ -247,6 +354,7 @@ export default function PublicStorePage() {
             buttonStyle={buttonStyle}
             sections={sections}
             viewMode="desktop"
+            onProductClick={handleProductClick}
           />
           {/* Dynamic products from your catalog */}
           {products.length > 0 && (
@@ -269,18 +377,26 @@ export default function PublicStorePage() {
                 {products.map((product) => (
                   <button
                     key={product.id}
-                    onClick={() => setSelectedProduct(product)}
+                    onClick={() => handleProductClick(product)}
                     className="bg-white border rounded-lg overflow-hidden flex flex-col text-left hover:shadow-md transition-shadow cursor-pointer"
                     style={{ borderColor: colors.secondary }}
                   >
-                    <div className="aspect-square bg-gray-100 flex items-center justify-center">
-                      <svg
-                        className="w-12 h-12 text-gray-300"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
-                      </svg>
+                    <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <svg
+                          className="w-12 h-12 text-gray-300"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                        </svg>
+                      )}
                     </div>
                     <div className="p-4 space-y-1">
                       <h3

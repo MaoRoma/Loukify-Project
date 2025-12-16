@@ -20,6 +20,7 @@ interface Product {
   stock?: string;
   rating?: number;
   reviews?: number;
+  image?: string;
 }
 
 interface ProductDetailPageProps {
@@ -28,6 +29,7 @@ interface ProductDetailPageProps {
   buttonStyle: ButtonStyle;
   product: Product;
   onBack: () => void;
+  onAddToCart?: () => void; // Optional callback after adding to cart
 }
 
 export function ProductDetailPage({
@@ -36,6 +38,7 @@ export function ProductDetailPage({
   buttonStyle,
   product,
   onBack,
+  onAddToCart,
 }: ProductDetailPageProps) {
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
@@ -46,8 +49,15 @@ export function ProductDetailPage({
 
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
-      addToCart(product);
+      addToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+      });
     }
+    // Call optional callback (e.g., navigate to cart)
+    onAddToCart?.();
   };
 
   const handleWishlistToggle = () => {
@@ -91,13 +101,21 @@ export function ProductDetailPage({
             className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
             style={{ borderColor: colors.secondary }}
           >
-            <svg
-              className="w-32 h-32 text-gray-300"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
-            </svg>
+            {product.image ? (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <svg
+                className="w-32 h-32 text-gray-300"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+              </svg>
+            )}
           </div>
 
           {/* Thumbnail Images */}

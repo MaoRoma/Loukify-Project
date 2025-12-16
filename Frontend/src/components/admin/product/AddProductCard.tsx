@@ -21,7 +21,11 @@ import { api } from "@/lib/api/config";
 export function AddProductForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -31,6 +35,71 @@ export function AddProductForm() {
     sku: "",
     barcode: "",
   });
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError("Please select an image file");
+        return;
+      }
+      // Validate file size (10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError("Image must be less than 10MB");
+        return;
+      }
+      setSelectedImage(file);
+      setError(null);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUpload = async (): Promise<string | null> => {
+    if (!selectedImage) return null;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+
+      // Get auth token
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Upload image
+      const response = await fetch('/api/storage/upload-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload image');
+      }
+
+      const result = await response.json();
+      return result.data?.publicUrl || null;
+    } catch (err: any) {
+      console.error('Image upload error:', err);
+      throw err;
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +114,12 @@ export function AddProductForm() {
     }
 
     try {
+      // Upload image first if selected
+      let imageUrl = "";
+      if (selectedImage) {
+        imageUrl = await handleImageUpload() || "";
+      }
+
       // Map form data to API format
       const productData = {
         product_name: formData.name,
@@ -52,7 +127,7 @@ export function AddProductForm() {
         product_price: parseFloat(formData.price),
         product_category: formData.category || undefined,
         product_status: formData.status === "in-stock" ? "active" : "inactive",
-        product_image: "", // TODO: Add image upload functionality
+        product_image: imageUrl,
       };
 
       // Call API to create product
@@ -80,12 +155,51 @@ export function AddProductForm() {
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 flex flex-col items-center justify-center bg-background hover:bg-muted/5 transition-colors cursor-pointer">
-          <Upload className="w-8 h-8 text-muted-foreground mb-3" />
-          <p className="text-sm font-medium text-foreground mb-1">
-            Click to upload or drag and drop
-          </p>
-          <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+        <div className="space-y-2">
+          <Label htmlFor="image" className="text-sm font-medium">
+            Product Image
+          </Label>
+          <label
+            htmlFor="image"
+            className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 flex flex-col items-center justify-center bg-background hover:bg-muted/5 transition-colors cursor-pointer"
+          >
+            {imagePreview ? (
+              <div className="relative w-full">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full h-48 object-cover rounded-lg mb-2"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSelectedImage(null);
+                    setImagePreview(null);
+                    setUploadedImageUrl(null);
+                  }}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-8 h-8 text-muted-foreground mb-3" />
+                <p className="text-sm font-medium text-foreground mb-1">
+                  Click to upload or drag and drop
+                </p>
+                <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+              </>
+            )}
+            <input
+              id="image"
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+          </label>
         </div>
 
         <div className="space-y-2">
@@ -194,9 +308,9 @@ export function AddProductForm() {
           <Button 
             type="submit" 
             className="bg-primary hover:bg-primary/90"
-            disabled={isLoading}
+            disabled={isLoading || isUploading}
           >
-            {isLoading ? "Creating..." : "Add Product"}
+            {isUploading ? "Uploading Image..." : isLoading ? "Creating..." : "Add Product"}
           </Button>
         </div>
       </form>

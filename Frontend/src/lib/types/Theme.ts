@@ -88,6 +88,7 @@ export interface CartItem {
   name: string
   price: number
   quantity: number
+  image?: string
 }
 
 // Add this to your Theme types file
