@@ -85,7 +85,8 @@ export async function POST(request: NextRequest) {
     // Generate unique filename
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `product-images/${fileName}`;
+    const bucketName = 'product_image'; // Match your Supabase bucket name
+    const filePath = fileName; // Upload directly to bucket root, or use a folder: `uploads/${fileName}`
 
     // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-      .from('product-images')
+      .from(bucketName)
       .upload(filePath, buffer, {
         contentType: file.type,
         cacheControl: '3600',
@@ -101,16 +102,35 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Upload error:', uploadError);
+      console.error('Upload error details:', {
+        message: uploadError.message,
+        statusCode: uploadError.statusCode,
+        error: uploadError
+      });
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to upload image to storage';
+      if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('does not exist')) {
+        errorMessage = `Bucket "${bucketName}" not found. Please create it in Supabase Storage.`;
+      } else if (uploadError.message?.includes('new row violates row-level security')) {
+        errorMessage = 'Storage bucket RLS policy is blocking upload. Please check bucket permissions in Supabase.';
+      } else {
+        errorMessage = uploadError.message || errorMessage;
+      }
+      
       return NextResponse.json(
-        { error: 'Upload failed', message: 'Failed to upload image to storage' },
+        { 
+          error: 'Upload failed', 
+          message: errorMessage,
+          details: uploadError.message 
+        },
         { status: 500 }
       );
     }
 
     // Get public URL
     const { data: urlData } = supabaseAdmin.storage
-      .from('product-images')
+      .from(bucketName)
       .getPublicUrl(filePath);
 
     return NextResponse.json({

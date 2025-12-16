@@ -87,12 +87,20 @@ export function AddProductForm() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload image');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || errorData.error || `Upload failed with status ${response.status}`;
+        console.error('Upload error response:', {
+          status: response.status,
+          error: errorData
+        });
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      return result.data?.publicUrl || null;
+      if (!result.success || !result.data?.publicUrl) {
+        throw new Error('Upload succeeded but no URL returned');
+      }
+      return result.data.publicUrl;
     } catch (err: any) {
       console.error('Image upload error:', err);
       throw err;
