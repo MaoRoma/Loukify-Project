@@ -1,5 +1,9 @@
+ "use client";
+
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Package } from "lucide-react";
+import { api } from "@/lib/api/config";
 
 interface StatCardProps {
   value: string | number;
@@ -33,6 +37,36 @@ function StateOrder({
 }
 
 export function OrderStats() {
+  const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [pendingOrders, setPendingOrders] = useState<number>(0);
+  const [completedOrders, setCompletedOrders] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.orders.getSummary();
+        const data = response?.data || {};
+
+        setTotalOrders(data.totalOrders || 0);
+        // If you later extend the backend to return status counts,
+        // these fields will start being populated automatically.
+        setPendingOrders(data.pendingOrders || 0);
+        setCompletedOrders(data.completedOrders || 0);
+      } catch (error) {
+        console.error("Failed to fetch order statistics:", error);
+        setTotalOrders(0);
+        setPendingOrders(0);
+        setCompletedOrders(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <>
       <div className="flex items-start justify-between">
@@ -45,19 +79,19 @@ export function OrderStats() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ">
         <StateOrder
-          value="4"
+          value={isLoading ? "..." : totalOrders}
           label="Total Orders"
           description="All time orders"
           icon={<Package className="w-6 h-6" />}
         />
         <StateOrder
-          value="2"
+          value={isLoading ? "..." : pendingOrders}
           label="Pending"
           description="Orders awaiting processing"
           icon={<Package className="w-6 h-6 text-orange-600" />}
         />
         <StateOrder
-          value="1"
+          value={isLoading ? "..." : completedOrders}
           label="Completed"
           description="Successfully fulfilled orders"
           icon={<Package className="w-6 h-6 text-green-600" />}

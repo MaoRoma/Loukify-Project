@@ -1,5 +1,9 @@
+ "use client";
+
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Package, User } from "lucide-react";
+import { User } from "lucide-react";
+import { api } from "@/lib/api/config";
 
 interface StatCardProps {
   value: string | number;
@@ -33,6 +37,31 @@ function StateCustomer({
 }
 
 export function CustomerStats() {
+  const [totalCustomers, setTotalCustomers] = useState<number>(0);
+  const [newThisMonth, setNewThisMonth] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.customers.getSummary();
+        const data = response?.data || {};
+        setTotalCustomers(data.totalCustomers || 0);
+        // If backend later adds newThisMonth, this will pick it up
+        setNewThisMonth(data.newThisMonth || 0);
+      } catch (error) {
+        console.error("Failed to fetch customer statistics:", error);
+        setTotalCustomers(0);
+        setNewThisMonth(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <>
       <div className="flex items-start justify-between">
@@ -45,12 +74,12 @@ export function CustomerStats() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ">
         <StateCustomer
-          value="4"
+          value={isLoading ? "..." : totalCustomers}
           label="Total Customers"
           icon={<User className="w-6 h-6" />}
         />
         <StateCustomer
-          value="1"
+          value={isLoading ? "..." : newThisMonth}
           label="New This Month"
           icon={<User className="text-shadow-green-600 w-6 h-6" />}
           valueColor="text-blue-600"

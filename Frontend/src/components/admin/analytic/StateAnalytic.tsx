@@ -1,12 +1,13 @@
 "use client";
 
 import type React from "react";
+import { useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { DollarSign, Download, ShoppingBag, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExportDialog } from "@/components/admin/analytic/ExportDialog";
-import { useState } from "react";
+import { api } from "@/lib/api/config";
 
 interface StatCardProps {
   value: string | number;
@@ -41,29 +42,48 @@ function StateAnalytics({
 
 export function StateAnalytic() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [revenue, setRevenue] = useState<number>(0);
+  const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [totalCustomers, setTotalCustomers] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setIsLoading(true);
+        const [ordersSummary, customersSummary] = await Promise.all([
+          api.orders.getSummary(),
+          api.customers.getSummary(),
+        ]);
+
+        const ordersData = ordersSummary?.data || {};
+        const customersData = customersSummary?.data || {};
+
+        setTotalOrders(ordersData.totalOrders || 0);
+        setRevenue(ordersData.totalRevenue || 0);
+        setTotalCustomers(customersData.totalCustomers || 0);
+      } catch (error) {
+        console.error("Failed to fetch analytics summary:", error);
+        setRevenue(0);
+        setTotalOrders(0);
+        setTotalCustomers(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, []);
 
   const analyticsData = {
     keyMetrics: {
-      revenue: 12400,
-      orders: 401,
-      customers: 86,
+      revenue,
+      orders: totalOrders,
+      customers: totalCustomers,
     },
-    salesOverview: [
-      { month: "Jan", sales: 1200 },
-      { month: "Feb", sales: 1900 },
-      { month: "Mar", sales: 1700 },
-      { month: "Apr", sales: 2200 },
-      { month: "May", sales: 1800 },
-      { month: "Jun", sales: 2500 },
-    ],
-    orderVolume: [
-      { month: "Jan", orders: 45 },
-      { month: "Feb", orders: 68 },
-      { month: "Mar", orders: 59 },
-      { month: "Apr", orders: 78 },
-      { month: "May", orders: 63 },
-      { month: "Jun", orders: 92 },
-    ],
+    // Charts can be wired to real data later; keep demo data or empty arrays for now
+    salesOverview: [],
+    orderVolume: [],
   };
 
   return (
@@ -87,21 +107,21 @@ export function StateAnalytic() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StateAnalytics
-          value="4"
+          value={isLoading ? "..." : `$${revenue.toFixed(2)}`}
           label="Total Revenue"
-          description="In Your Catelog"
+          description="All time revenue"
           icon={<DollarSign className="w-6 h-6" />}
         />
         <StateAnalytics
-          value="2"
-          label="Total Value"
-          description="Total Orders"
+          value={isLoading ? "..." : totalOrders}
+          label="Total Orders"
+          description="All time orders"
           icon={<ShoppingBag className="w-6 h-6 text-orange-600" />}
         />
         <StateAnalytics
-          value="1"
-          label="Total Customer"
-          description="Product categories"
+          value={isLoading ? "..." : totalCustomers}
+          label="Total Customers"
+          description="All time customers"
           icon={<UserRound className="w-6 h-6 text-green-600" />}
         />
       </div>
