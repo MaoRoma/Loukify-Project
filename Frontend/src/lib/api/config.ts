@@ -154,6 +154,7 @@ export const api = {
   // Products API
   products: {
     getAll: () => apiRequest('/api/products'),
+    getSummary: () => apiRequest('/api/products/summary'),
     getPublic: () => apiRequest('/api/products/public'),
     getPublicBySubdomain: (subdomain: string) => apiRequest(`/api/products/public/${subdomain}`),
     getById: (id: string) => apiRequest(`/api/products/${id}`),
@@ -180,6 +181,7 @@ export const api = {
   // Customers API
   customers: {
     getAll: () => apiRequest('/api/customers'),
+    getSummary: () => apiRequest('/api/customers/summary'),
     getById: (id: string) => apiRequest(`/api/customers/${id}`),
     create: (data: {
       customer_name: string;
@@ -202,11 +204,13 @@ export const api = {
   // Orders API
   orders: {
     getAll: () => apiRequest('/api/orders'),
+    getSummary: () => apiRequest('/api/orders/summary'),
     getById: (id: string) => apiRequest(`/api/orders/${id}`),
     create: (data: {
       customer_id: string;
       total_price: number;
       date?: string;
+      order_items?: any[];
     }) => apiRequest('/api/orders', {
       method: 'POST',
       body: JSON.stringify(data),

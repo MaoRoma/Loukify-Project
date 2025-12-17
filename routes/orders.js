@@ -4,6 +4,18 @@ import { authenticateToken } from '../auth/middlewares/authMiddleware.js';
 
 const router = express.Router();
 
+async function getStoreForUser(userId) {
+  const { data: storeTemplate, error: storeError } = await supabaseAdmin
+    .from('store_templates')
+    .select('id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return { storeTemplate, storeError };
+}
+
 /**
  * Helper: Generate unique order ID
  */
@@ -31,11 +43,54 @@ const sanitizeOrderItems = (items) => {
 };
 
 /**
+ * GET /api/orders/summary
+ * Get orders summary statistics
+ */
+router.get('/summary', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('orders')
+      .select('total_price, date')
+      .eq('store_id', storeTemplate.id);
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    // Calculate summary statistics
+    const totalOrders = data.length;
+    const totalRevenue = data.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0);
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalOrders,
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        averageOrderValue: parseFloat(averageOrderValue.toFixed(2))
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to get orders summary' });
+  }
+});
+
+/**
  * GET /api/orders
- * List all orders with customer information
+ * List all orders with customer information (for authenticated user's store)
  */
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id;
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('orders')
       .select(`
@@ -48,6 +103,7 @@ router.get('/', authenticateToken, async (req, res) => {
           customer_location
         )
       `)
+      .eq('store_id', storeTemplate.id)
       .order('date', { ascending: false });
 
     if (error) return res.status(400).json({ error: error.message });
@@ -73,11 +129,17 @@ router.get('/', authenticateToken, async (req, res) => {
 
 /**
  * GET /api/orders/:id
- * Get single order with customer information
+ * Get single order with customer information (must belong to user's store)
  */
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.params;
+
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('orders')
@@ -92,6 +154,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         )
       `)
       .eq('id', id)
+      .eq('store_id', storeTemplate.id)
       .single();
 
     if (error || !data) return res.status(404).json({ error: 'Order not found' });
@@ -104,11 +167,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 /**
  * POST /api/orders
- * Create a new order
+ * Create a new order (customer must belong to user's store)
  * Body: { customer_id, total_price, date (optional), order_items (array) }
  */
 router.post('/', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id;
     const {
       customer_id,
       total_price,
@@ -122,15 +186,21 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Verify customer exists
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
+
+    // Verify customer exists and belongs to the same store
     const { data: customer, error: customerError } = await supabaseAdmin
       .from('customers')
-      .select('customer_id')
+      .select('customer_id, store_id')
       .eq('customer_id', customer_id)
+      .eq('store_id', storeTemplate.id)
       .single();
 
     if (customerError || !customer) {
-      return res.status(404).json({ error: 'Customer not found' });
+      return res.status(404).json({ error: 'Customer not found or does not belong to your store' });
     }
 
     // Generate order ID
@@ -145,7 +215,8 @@ router.post('/', authenticateToken, async (req, res) => {
         customer_id,
         total_price: parseFloat(total_price),
         date: date ? new Date(date).toISOString() : new Date().toISOString(),
-        order_items: sanitizedItems
+        order_items: sanitizedItems,
+        store_id: storeTemplate.id
       })
       .select()
       .single();
@@ -160,10 +231,11 @@ router.post('/', authenticateToken, async (req, res) => {
 
 /**
  * PUT /api/orders/:id
- * Update order
+ * Update order (must belong to user's store)
  */
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.params;
     const {
       customer_id,
@@ -172,6 +244,25 @@ router.put('/:id', authenticateToken, async (req, res) => {
       order_id,
       order_items
     } = req.body;
+
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
+
+    // If updating customer_id, verify the new customer belongs to the same store
+    if (customer_id !== undefined) {
+      const { data: customer, error: customerError } = await supabaseAdmin
+        .from('customers')
+        .select('customer_id, store_id')
+        .eq('customer_id', customer_id)
+        .eq('store_id', storeTemplate.id)
+        .single();
+
+      if (customerError || !customer) {
+        return res.status(404).json({ error: 'Customer not found or does not belong to your store' });
+      }
+    }
 
     const updateData = {};
     if (customer_id !== undefined) updateData.customer_id = customer_id;
@@ -184,6 +275,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       .from('orders')
       .update(updateData)
       .eq('id', id)
+      .eq('store_id', storeTemplate.id)
       .select()
       .single();
 
@@ -199,16 +291,23 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
 /**
  * DELETE /api/orders/:id
- * Delete order
+ * Delete order (must belong to user's store)
  */
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.params;
+
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
 
     const { error } = await supabaseAdmin
       .from('orders')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('store_id', storeTemplate.id);
 
     if (error) return res.status(400).json({ error: error.message });
 
