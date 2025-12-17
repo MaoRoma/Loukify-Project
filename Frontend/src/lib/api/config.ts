@@ -155,6 +155,7 @@ export const api = {
   products: {
     getAll: () => apiRequest('/api/products'),
     getPublic: () => apiRequest('/api/products/public'),
+    getPublicBySubdomain: (subdomain: string) => apiRequest(`/api/products/public/${subdomain}`),
     getById: (id: string) => apiRequest(`/api/products/${id}`),
     create: (data: {
       product_name: string;

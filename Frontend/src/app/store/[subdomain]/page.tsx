@@ -73,7 +73,7 @@ export default function PublicStorePage() {
 
         // Load public products for this store (if backend is configured)
         try {
-          const productsResponse = await api.products.getPublic();
+          const productsResponse = await api.products.getPublicBySubdomain(subdomain);
           const apiProducts = productsResponse?.data || [];
           const mappedProducts: Product[] = apiProducts.map((p: any) => ({
             id: p.id,

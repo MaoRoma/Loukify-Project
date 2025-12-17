@@ -4,15 +4,34 @@ import { authenticateToken } from '../auth/middlewares/authMiddleware.js';
 
 const router = express.Router();
 
+async function getStoreForUser(userId) {
+  const { data: storeTemplate, error: storeError } = await supabaseAdmin
+    .from('store_templates')
+    .select('id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return { storeTemplate, storeError };
+}
+
 /**
  * GET /api/products/summary
  * Get products summary statistics
  */
 router.get('/summary', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id;
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('products')
-      .select('product_status, product_price');
+      .select('product_status, product_price')
+      .eq('store_id', storeTemplate.id);
 
     if (error) return res.status(400).json({ error: error.message });
 
@@ -42,7 +61,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
 
 /**
  * GET /api/products/public
- * List all active products (public endpoint for store pages)
+ * List all active products (global) - legacy / not multi-tenant safe
  */
 router.get('/public', async (req, res) => {
   try {
@@ -74,14 +93,69 @@ router.get('/public', async (req, res) => {
 });
 
 /**
+ * GET /api/products/public/:subdomain
+ * List active products for a specific published store (for public store pages)
+ */
+router.get('/public/:subdomain', async (req, res) => {
+  try {
+    const { subdomain } = req.params;
+
+    // Find the published store by subdomain
+    const { data: storeTemplate, error: storeError } = await supabaseAdmin
+      .from('store_templates')
+      .select('id')
+      .eq('store_subdomain', subdomain)
+      .eq('is_published', true)
+      .single();
+
+    if (storeError || !storeTemplate) {
+      return res.status(404).json({ error: 'Store not found' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .select('*')
+      .eq('product_status', 'active')
+      .eq('store_id', storeTemplate.id)
+      .order('created_at', { ascending: false });
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    const formattedProducts = data.map(product => ({
+      id: product.id,
+      product_name: product.product_name,
+      product_description: product.product_description,
+      product_price: parseFloat(product.product_price) || 0,
+      product_category: product.product_category,
+      product_status: product.product_status,
+      product_image: product.product_image,
+      created_at: product.created_at,
+      updated_at: product.updated_at
+    }));
+
+    res.status(200).json({ success: true, data: formattedProducts });
+  } catch (err) {
+    console.error('Public products error:', err);
+    res.status(500).json({ error: err.message || 'Failed to list products' });
+  }
+});
+
+/**
  * GET /api/products
  * List all products (requires authentication)
  */
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id;
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('products')
       .select('*')
+      .eq('store_id', storeTemplate.id)
       .order('created_at', { ascending: false });
 
     if (error) return res.status(400).json({ error: error.message });
@@ -112,11 +186,17 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('products')
       .select('*')
       .eq('id', id)
+      .eq('store_id', storeTemplate.id)
       .single();
 
     if (error || !data) return res.status(404).json({ error: 'Product not found' });
@@ -134,6 +214,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
  */
 router.post('/', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id;
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
+
     const {
       product_name,
       product_description,
@@ -167,7 +253,8 @@ router.post('/', authenticateToken, async (req, res) => {
         product_price: price,
         product_category,
         product_status,
-        product_image
+        product_image,
+        store_id: storeTemplate.id
       })
       .select()
       .single();
@@ -187,6 +274,11 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
     const {
       product_name,
       product_description,
@@ -220,6 +312,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       .from('products')
       .update(updateData)
       .eq('id', id)
+      .eq('store_id', storeTemplate.id)
       .select()
       .single();
 
@@ -240,11 +333,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
+    const { storeTemplate, storeError } = await getStoreForUser(userId);
+    if (storeError || !storeTemplate) {
+      return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
+    }
 
     const { error } = await supabaseAdmin
       .from('products')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('store_id', storeTemplate.id);
 
     if (error) return res.status(400).json({ error: error.message });
 
