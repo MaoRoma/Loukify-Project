@@ -38,7 +38,6 @@ function StateCustomer({
 
 export function CustomerStats() {
   const [totalCustomers, setTotalCustomers] = useState<number>(0);
-  const [newThisMonth, setNewThisMonth] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -48,12 +47,9 @@ export function CustomerStats() {
         const response = await api.customers.getSummary();
         const data = response?.data || {};
         setTotalCustomers(data.totalCustomers || 0);
-        // If backend later adds newThisMonth, this will pick it up
-        setNewThisMonth(data.newThisMonth || 0);
       } catch (error) {
         console.error("Failed to fetch customer statistics:", error);
         setTotalCustomers(0);
-        setNewThisMonth(0);
       } finally {
         setIsLoading(false);
       }
@@ -77,12 +73,6 @@ export function CustomerStats() {
           value={isLoading ? "..." : totalCustomers}
           label="Total Customers"
           icon={<User className="w-6 h-6" />}
-        />
-        <StateCustomer
-          value={isLoading ? "..." : newThisMonth}
-          label="New This Month"
-          icon={<User className="text-shadow-green-600 w-6 h-6" />}
-          valueColor="text-blue-600"
         />
       </div>
     </>
