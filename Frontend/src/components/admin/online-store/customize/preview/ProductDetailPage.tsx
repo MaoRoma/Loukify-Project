@@ -43,7 +43,6 @@ export function ProductDetailPage({
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
-  const [selectedImage, setSelectedImage] = useState(0);
 
   const isWishlisted = isInWishlist(product.id);
 
@@ -76,9 +75,6 @@ export function ProductDetailPage({
       });
     }
   };
-
-  // Mock images - in real app these would come from product data
-  const productImages = [0, 1, 2, 3];
 
   return (
     <div className="px-6 py-12">
@@ -118,28 +114,6 @@ export function ProductDetailPage({
             )}
           </div>
 
-          {/* Thumbnail Images */}
-          <div className="grid grid-cols-4 gap-2">
-            {productImages.map((index) => (
-              <button
-                key={index}
-                onClick={() => setSelectedImage(index)}
-                className={`aspect-square bg-gray-100 rounded flex items-center justify-center border-2 transition-all hover:opacity-80`}
-                style={{
-                  borderColor: selectedImage === index ? colors.primary : colors.secondary,
-                  opacity: selectedImage === index ? 1 : 0.6,
-                }}
-              >
-                <svg
-                  className="w-8 h-8 text-gray-300"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
-                </svg>
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Right: Product Information */}
