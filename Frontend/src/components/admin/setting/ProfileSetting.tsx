@@ -188,7 +188,6 @@ export function ProfileSetting() {
             </p>
           </div>
 
-          <div className="space-y-2">
           <Button 
             onClick={handleSave} 
             className="bg-primary hover:bg-primary/90"
