@@ -246,13 +246,23 @@ router.put('/store', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'store_name is required' });
     }
 
-    // Get current settings
-    const { data: currentSettings } = await supabaseAdmin
+    // Get current settings for this user (filter by user's email)
+    const userEmail = req.user.email;
+    if (!userEmail) {
+      return res.status(400).json({ error: 'User email not found in token' });
+    }
+
+    const { data: currentSettings, error: settingsError } = await supabaseAdmin
       .from('settings')
       .select('*')
+      .eq('email_address', userEmail)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
+
+    if (settingsError) {
+      return res.status(400).json({ error: settingsError.message });
+    }
 
     if (!currentSettings) {
       return res.status(404).json({ error: 'Settings not found. Please create settings first.' });

@@ -52,15 +52,23 @@ export async function GET(
 
     // Fetch payment method image from settings
     let paymentMethodImage = null;
+    
+    // Try multiple methods to get payment method image
+    // Method 1: Use settings_id if available
     if (storeTemplate.settings_id) {
-      const { data: settings } = await supabaseAdmin
+      const { data: settings, error: settingsError } = await supabaseAdmin
         .from('settings')
         .select('payment_method_image')
         .eq('id', storeTemplate.settings_id)
         .maybeSingle();
-      paymentMethodImage = settings?.payment_method_image || null;
-    } else if (storeTemplate.user_id) {
-      // Fallback: get settings by user email
+      
+      if (!settingsError && settings?.payment_method_image) {
+        paymentMethodImage = settings.payment_method_image;
+      }
+    }
+    
+    // Method 2: If not found via settings_id, try by user_id
+    if (!paymentMethodImage && storeTemplate.user_id) {
       try {
         const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
         if (!userError && user?.user?.email) {
@@ -68,12 +76,39 @@ export async function GET(
             .from('settings')
             .select('payment_method_image')
             .eq('email_address', user.user.email)
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
-          paymentMethodImage = settings?.payment_method_image || null;
+          
+          if (settings?.payment_method_image) {
+            paymentMethodImage = settings.payment_method_image;
+          }
         }
       } catch (userErr) {
-        // If we can't get user, just continue without payment method image
         console.warn('Could not fetch user for payment method image:', userErr);
+      }
+    }
+    
+    // Method 3: Try to get any settings for this user_id (if user_id matches settings via some other relation)
+    if (!paymentMethodImage && storeTemplate.user_id) {
+      // Try to find settings that might be linked through store_name or other fields
+      const { data: allSettings } = await supabaseAdmin
+        .from('settings')
+        .select('payment_method_image, user_id, email_address')
+        .not('payment_method_image', 'is', null)
+        .limit(10);
+      
+      // If we can get user email, try to match
+      try {
+        const { data: user } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
+        if (user?.user?.email && allSettings) {
+          const matchingSetting = allSettings.find(s => s.email_address === user.user.email);
+          if (matchingSetting?.payment_method_image) {
+            paymentMethodImage = matchingSetting.payment_method_image;
+          }
+        }
+      } catch (err) {
+        // Ignore errors
       }
     }
 
