@@ -25,7 +25,8 @@ async function syncStoreTemplate(userId, storeData, settingsId = null) {
       const updateData = {};
       if (store_name !== undefined) updateData.store_name = store_name;
       if (store_subdomain !== undefined) updateData.store_subdomain = store_subdomain;
-      // Always update settings_id if provided (even if null, to ensure it's set)
+      // CRITICAL: Always update settings_id when provided to ensure proper linking
+      // This ensures each store template is linked to the correct settings record
       if (settingsId !== undefined && settingsId !== null) {
         updateData.settings_id = settingsId;
       }

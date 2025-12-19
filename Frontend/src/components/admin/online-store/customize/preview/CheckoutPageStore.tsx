@@ -31,13 +31,15 @@ export function CheckoutPage({
   const { cartItems, cartTotal, clearCart } = useCart();
   const [showPaymentImage, setShowPaymentImage] = useState(false);
 
-  // Debug: Log payment method image
+  // Check if payment method image is available (handle empty strings)
+  const hasPaymentImage = paymentMethodImage && paymentMethodImage.trim() !== '';
+
+  // Auto-show image if available
   useEffect(() => {
-    console.log('CheckoutPage - paymentMethodImage:', paymentMethodImage);
-    if (paymentMethodImage) {
+    if (hasPaymentImage) {
       setShowPaymentImage(true);
     }
-  }, [paymentMethodImage]);
+  }, [hasPaymentImage]);
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -243,7 +245,7 @@ export function CheckoutPage({
             >
               Payment Method
             </h2>
-            {paymentMethodImage && showPaymentImage ? (
+            {hasPaymentImage && showPaymentImage ? (
               <div className="space-y-3">
                 <div className="w-full flex items-center justify-center p-4 border rounded-lg bg-gray-50"
                   style={{
@@ -281,10 +283,8 @@ export function CheckoutPage({
             ) : (
               <button
                 onClick={() => {
-                  if (paymentMethodImage) {
+                  if (hasPaymentImage) {
                     setShowPaymentImage(true);
-                  } else {
-                    alert('Payment method image not configured. Please upload a QR code in Settings → Store.');
                   }
                 }}
                 className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
@@ -293,14 +293,16 @@ export function CheckoutPage({
                   fontSize: `${typography.bodySize}px`,
                   borderRadius: getButtonRadius(buttonStyle),
                   color: colors.text,
-                  backgroundColor: paymentMethodImage ? colors.secondary + '20' : colors.secondary + '20',
+                  backgroundColor: colors.secondary + '20',
+                  cursor: hasPaymentImage ? 'pointer' : 'default',
                 }}
+                disabled={!hasPaymentImage}
               >
                 <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
                   A
                 </div>
                 ABA Bank
-                {paymentMethodImage ? (
+                {hasPaymentImage ? (
                   <span className="text-xs text-muted-foreground ml-2">
                     (Click to view QR code)
                   </span>
