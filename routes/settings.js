@@ -131,7 +131,8 @@ router.post('/', authenticateToken, async (req, res) => {
       phone_number,
       store_name,
       store_description,
-      store_url
+      store_url,
+      payment_method_image
     } = req.body;
 
     if (!first_name || !last_name || !email_address || !store_name) {
@@ -149,7 +150,8 @@ router.post('/', authenticateToken, async (req, res) => {
         phone_number,
         store_name,
         store_description,
-        store_url
+        store_url,
+        payment_method_image
       })
       .select()
       .single();
@@ -188,7 +190,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
       phone_number,
       store_name,
       store_description,
-      store_url
+      store_url,
+      payment_method_image
     } = req.body;
 
     const updateData = {};
@@ -199,6 +202,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (store_name !== undefined) updateData.store_name = store_name;
     if (store_description !== undefined) updateData.store_description = store_description;
     if (store_url !== undefined) updateData.store_url = store_url;
+    if (payment_method_image !== undefined) updateData.payment_method_image = payment_method_image;
 
     const { data, error } = await supabaseAdmin
       .from('settings')
@@ -236,7 +240,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
  */
 router.put('/store', authenticateToken, async (req, res) => {
   try {
-    const { store_name, store_description, store_url } = req.body;
+    const { store_name, store_description, store_url, payment_method_image } = req.body;
 
     if (!store_name) {
       return res.status(400).json({ error: 'store_name is required' });
@@ -255,13 +259,18 @@ router.put('/store', authenticateToken, async (req, res) => {
     }
 
     // Update settings
+    const updateData = {
+      store_name,
+      store_description,
+      store_url
+    };
+    if (payment_method_image !== undefined) {
+      updateData.payment_method_image = payment_method_image;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('settings')
-      .update({
-        store_name,
-        store_description,
-        store_url
-      })
+      .update(updateData)
       .eq('id', currentSettings.id)
       .select()
       .single();

@@ -29,6 +29,7 @@ interface StoreTemplate {
   section_part: any[];
   footer_part: any;
   is_published: boolean;
+  payment_method_image?: string;
 }
 
 interface Product {
@@ -245,6 +246,7 @@ export default function PublicStorePage() {
               colors={colors}
               typography={typography}
               buttonStyle={buttonStyle}
+              paymentMethodImage={store?.payment_method_image}
               onBackToCart={handleBackToCart}
               onConfirmOrder={() => {
                 // After order confirmation, go back to home

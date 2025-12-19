@@ -38,18 +38,52 @@ export async function GET(
   try {
     const { subdomain } = await params;
 
-    const { data, error } = await supabaseAdmin
+    // Fetch store template
+    const { data: storeTemplate, error: storeError } = await supabaseAdmin
       .from('store_templates')
       .select('*')
       .eq('store_subdomain', subdomain)
       .eq('is_published', true)
       .maybeSingle();
 
-    if (error || !data) {
+    if (storeError || !storeTemplate) {
       return NextResponse.json({ error: 'Store not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data });
+    // Fetch payment method image from settings
+    let paymentMethodImage = null;
+    if (storeTemplate.settings_id) {
+      const { data: settings } = await supabaseAdmin
+        .from('settings')
+        .select('payment_method_image')
+        .eq('id', storeTemplate.settings_id)
+        .maybeSingle();
+      paymentMethodImage = settings?.payment_method_image || null;
+    } else if (storeTemplate.user_id) {
+      // Fallback: get settings by user email
+      try {
+        const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
+        if (!userError && user?.user?.email) {
+          const { data: settings } = await supabaseAdmin
+            .from('settings')
+            .select('payment_method_image')
+            .eq('email_address', user.user.email)
+            .maybeSingle();
+          paymentMethodImage = settings?.payment_method_image || null;
+        }
+      } catch (userErr) {
+        // If we can't get user, just continue without payment method image
+        console.warn('Could not fetch user for payment method image:', userErr);
+      }
+    }
+
+    // Add payment_method_image to the response
+    const responseData = {
+      ...storeTemplate,
+      payment_method_image: paymentMethodImage
+    };
+
+    return NextResponse.json({ success: true, data: responseData });
   } catch (err: any) {
     return NextResponse.json(
       { error: 'Failed to fetch store by subdomain' },

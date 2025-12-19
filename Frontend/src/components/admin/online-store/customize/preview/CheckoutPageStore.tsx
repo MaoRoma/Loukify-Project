@@ -15,6 +15,7 @@ interface CheckoutPageProps {
   colors: ThemeColors;
   typography: ThemeTypography;
   buttonStyle: ButtonStyle;
+  paymentMethodImage?: string;
   onBackToCart: () => void;
   onConfirmOrder?: () => void;
 }
@@ -23,6 +24,7 @@ export function CheckoutPage({
   colors,
   typography,
   buttonStyle,
+  paymentMethodImage,
   onBackToCart,
   onConfirmOrder,
 }: CheckoutPageProps) {
@@ -232,20 +234,50 @@ export function CheckoutPage({
             >
               Payment Method
             </h2>
-            <button
-              className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
-              style={{
-                borderColor: colors.secondary,
-                fontSize: `${typography.bodySize}px`,
-                borderRadius: getButtonRadius(buttonStyle),
-                color: colors.text,
-              }}
-            >
-              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                A
+            {paymentMethodImage ? (
+              <div className="space-y-3">
+                <div className="w-full flex items-center justify-center p-4 border rounded-lg bg-gray-50"
+                  style={{
+                    borderColor: colors.secondary,
+                    borderRadius: getButtonRadius(buttonStyle),
+                  }}
+                >
+                  <img
+                    src={paymentMethodImage}
+                    alt="Payment QR Code"
+                    className="max-w-full h-auto max-h-64 object-contain"
+                  />
+                </div>
+                <p
+                  className="text-center text-sm"
+                  style={{
+                    color: colors.text,
+                    fontSize: `${typography.bodySize * 0.9}px`,
+                  }}
+                >
+                  Scan the QR code to complete payment
+                </p>
               </div>
-              ABA Bank
-            </button>
+            ) : (
+              <div
+                className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2"
+                style={{
+                  borderColor: colors.secondary,
+                  fontSize: `${typography.bodySize}px`,
+                  borderRadius: getButtonRadius(buttonStyle),
+                  color: colors.text,
+                  backgroundColor: colors.secondary + '20',
+                }}
+              >
+                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  A
+                </div>
+                ABA Bank
+                <span className="text-xs text-muted-foreground ml-2">
+                  (Payment method not configured)
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

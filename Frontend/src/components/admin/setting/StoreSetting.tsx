@@ -37,6 +37,7 @@ interface StoreSettings {
   last_name?: string;
   email_address?: string;
   phone_number?: string;
+  payment_method_image?: string;
 }
 
 const StoreSetting = () => {
@@ -44,9 +45,12 @@ const StoreSetting = () => {
     store_name: "",
     store_description: "",
     store_url: "",
+    payment_method_image: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Fetch store settings on component mount
   useEffect(() => {
@@ -66,7 +70,11 @@ const StoreSetting = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data.length > 0) {
-          setSettings(data.data[0]);
+          const fetchedSettings = data.data[0];
+          setSettings(fetchedSettings);
+          if (fetchedSettings.payment_method_image) {
+            setImagePreview(fetchedSettings.payment_method_image);
+          }
         }
       }
     } catch (error) {
@@ -100,6 +108,7 @@ const StoreSetting = () => {
           store_name: settings.store_name,
           store_description: settings.store_description,
           store_url: settings.store_url,
+          payment_method_image: settings.payment_method_image,
         }),
       });
 
@@ -141,6 +150,7 @@ const StoreSetting = () => {
           store_name: settings.store_name,
           store_description: settings.store_description,
           store_url: settings.store_url,
+          payment_method_image: settings.payment_method_image,
         }),
       });
 
@@ -158,6 +168,72 @@ const StoreSetting = () => {
       console.error('Error creating store settings:', error);
       alert('Error creating store settings');
     }
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('Image must be less than 10MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // Get auth token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please log in to upload images');
+        return;
+      }
+
+      // Upload image
+      const uploadResponse = await fetch('/api/storage/upload-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.message || 'Failed to upload image');
+      }
+
+      const uploadData = await uploadResponse.json();
+      if (uploadData.success && uploadData.data?.publicUrl) {
+        const imageUrl = uploadData.data.publicUrl;
+        setSettings(prev => ({ ...prev, payment_method_image: imageUrl }));
+        setImagePreview(imageUrl);
+      } else {
+        throw new Error('Failed to get image URL');
+      }
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      alert(error.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSettings(prev => ({ ...prev, payment_method_image: "" }));
+    setImagePreview(null);
   };
   return (
     <div className="bg-card rounded-lg border border-border p-6">
@@ -241,6 +317,82 @@ const StoreSetting = () => {
           </Button>
         </div>
       )}
+
+      {/* Payment Method Section */}
+      <div className="bg-card rounded-lg border border-border p-6 mt-6">
+        <div className="flex items-start gap-3 mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              Payment Method
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Upload your payment QR code or image (e.g., ABA Bank QR code). This will be displayed to customers at checkout.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {imagePreview ? (
+            <div className="space-y-4">
+              <div className="relative w-full max-w-md">
+                <img
+                  src={imagePreview}
+                  alt="Payment Method"
+                  className="w-full h-auto border border-border rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  title="Remove image"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Click "Upload New Image" below to replace this image.
+              </div>
+            </div>
+          ) : (
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+              <p className="text-muted-foreground mb-4">
+                No payment method image uploaded yet
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="paymentImage" className="text-sm font-medium">
+              {imagePreview ? 'Upload New Image' : 'Upload Payment Method Image'}
+            </Label>
+            <Input
+              id="paymentImage"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={uploadingImage}
+              className="bg-muted/50"
+            />
+            {uploadingImage && (
+              <p className="text-sm text-muted-foreground">Uploading image...</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Supported formats: JPG, PNG, GIF. Max size: 10MB
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
