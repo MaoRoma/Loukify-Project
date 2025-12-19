@@ -194,10 +194,15 @@ const StoreSetting = () => {
       const formData = new FormData();
       formData.append('image', file);
 
-      // Get auth token
-      const token = localStorage.getItem('token');
+      // Get auth token from Supabase session (same as product image upload)
+      const { supabase } = await import('@/lib/supabase/client');
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       if (!token) {
-        alert('Please log in to upload images');
+        alert('Please log in again to upload images.');
         return;
       }
 
