@@ -274,19 +274,6 @@ const StoreSetting = () => {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="storedescription" className="text-sm font-medium">
-              Store Description
-            </Label>
-            <Input 
-              id="storedescription" 
-              type="text" 
-              className="bg-muted/50"
-              value={settings.store_description}
-              onChange={(e) => handleInputChange('store_description', e.target.value)}
-              placeholder="Describe your store"
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="storeurl" className="text-sm font-medium">
               Store URL
             </Label>

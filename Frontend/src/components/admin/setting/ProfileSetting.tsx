@@ -189,18 +189,6 @@ export function ProfileSetting() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="storeName" className="text-sm font-medium">
-              Store Name
-            </Label>
-            <Input
-              id="storeName"
-              value={formData.storeName}
-              onChange={(e) => handleChange("storeName", e.target.value)}
-              className="bg-muted/50"
-              placeholder="Enter your store name"
-            />
-          </div>
-
           <Button 
             onClick={handleSave} 
             className="bg-primary hover:bg-primary/90"
