@@ -38,8 +38,6 @@ function StateOrder({
 
 export function OrderStats() {
   const [totalOrders, setTotalOrders] = useState<number>(0);
-  const [pendingOrders, setPendingOrders] = useState<number>(0);
-  const [completedOrders, setCompletedOrders] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -50,15 +48,9 @@ export function OrderStats() {
         const data = response?.data || {};
 
         setTotalOrders(data.totalOrders || 0);
-        // If you later extend the backend to return status counts,
-        // these fields will start being populated automatically.
-        setPendingOrders(data.pendingOrders || 0);
-        setCompletedOrders(data.completedOrders || 0);
       } catch (error) {
         console.error("Failed to fetch order statistics:", error);
         setTotalOrders(0);
-        setPendingOrders(0);
-        setCompletedOrders(0);
       } finally {
         setIsLoading(false);
       }
@@ -83,18 +75,6 @@ export function OrderStats() {
           label="Total Orders"
           description="All time orders"
           icon={<Package className="w-6 h-6" />}
-        />
-        <StateOrder
-          value={isLoading ? "..." : pendingOrders}
-          label="Pending"
-          description="Orders awaiting processing"
-          icon={<Package className="w-6 h-6 text-orange-600" />}
-        />
-        <StateOrder
-          value={isLoading ? "..." : completedOrders}
-          label="Completed"
-          description="Successfully fulfilled orders"
-          icon={<Package className="w-6 h-6 text-green-600" />}
         />
       </div>
     </>
