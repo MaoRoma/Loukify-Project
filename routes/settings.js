@@ -25,7 +25,10 @@ async function syncStoreTemplate(userId, storeData, settingsId = null) {
       const updateData = {};
       if (store_name !== undefined) updateData.store_name = store_name;
       if (store_subdomain !== undefined) updateData.store_subdomain = store_subdomain;
-      if (settingsId !== undefined) updateData.settings_id = settingsId;
+      // Always update settings_id if provided (even if null, to ensure it's set)
+      if (settingsId !== undefined && settingsId !== null) {
+        updateData.settings_id = settingsId;
+      }
 
       // Update header_part with store name and description
       if (store_name !== undefined || store_description !== undefined) {

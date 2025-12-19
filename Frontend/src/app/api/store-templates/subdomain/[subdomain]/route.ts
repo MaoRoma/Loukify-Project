@@ -54,7 +54,7 @@ export async function GET(
     let paymentMethodImage = null;
     
     // Try multiple methods to get payment method image
-    // Method 1: Use settings_id if available
+    // Method 1: Use settings_id if available (most reliable)
     if (storeTemplate.settings_id) {
       const { data: settings, error: settingsError } = await supabaseAdmin
         .from('settings')
@@ -64,24 +64,31 @@ export async function GET(
       
       if (!settingsError && settings?.payment_method_image) {
         paymentMethodImage = settings.payment_method_image;
+        console.log('Payment method image found via settings_id:', paymentMethodImage);
+      } else if (settingsError) {
+        console.warn('Error fetching settings by settings_id:', settingsError);
       }
     }
     
-    // Method 2: If not found via settings_id, try by user_id
+    // Method 2: If not found via settings_id, try by user_id and email
     if (!paymentMethodImage && storeTemplate.user_id) {
       try {
         const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
         if (!userError && user?.user?.email) {
-          const { data: settings } = await supabaseAdmin
+          const { data: settings, error: settingsError2 } = await supabaseAdmin
             .from('settings')
             .select('payment_method_image')
             .eq('email_address', user.user.email)
+            .not('payment_method_image', 'is', null)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
           
-          if (settings?.payment_method_image) {
+          if (!settingsError2 && settings?.payment_method_image) {
             paymentMethodImage = settings.payment_method_image;
+            console.log('Payment method image found via user email:', paymentMethodImage);
+          } else if (settingsError2) {
+            console.warn('Error fetching settings by email:', settingsError2);
           }
         }
       } catch (userErr) {
@@ -89,27 +96,12 @@ export async function GET(
       }
     }
     
-    // Method 3: Try to get any settings for this user_id (if user_id matches settings via some other relation)
-    if (!paymentMethodImage && storeTemplate.user_id) {
-      // Try to find settings that might be linked through store_name or other fields
-      const { data: allSettings } = await supabaseAdmin
-        .from('settings')
-        .select('payment_method_image, user_id, email_address')
-        .not('payment_method_image', 'is', null)
-        .limit(10);
-      
-      // If we can get user email, try to match
-      try {
-        const { data: user } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
-        if (user?.user?.email && allSettings) {
-          const matchingSetting = allSettings.find(s => s.email_address === user.user.email);
-          if (matchingSetting?.payment_method_image) {
-            paymentMethodImage = matchingSetting.payment_method_image;
-          }
-        }
-      } catch (err) {
-        // Ignore errors
-      }
+    if (!paymentMethodImage) {
+      console.warn('Payment method image not found for store:', {
+        subdomain,
+        settings_id: storeTemplate.settings_id,
+        user_id: storeTemplate.user_id
+      });
     }
 
     // Add payment_method_image to the response
