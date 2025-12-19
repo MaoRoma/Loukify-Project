@@ -117,39 +117,58 @@ const StoreSetting = () => {
         setIsSaving(false);
         return;
       }
-      
-      // Use the dedicated store endpoint for better handling
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const url = `${apiUrl}/api/settings/store`;
 
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          store_name: settings.store_name,
-          store_description: settings.store_description,
-          store_url: settings.store_url,
-          payment_method_image: settings.payment_method_image,
-        }),
-      });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      let response;
+      let data;
+
+      // If settings ID exists, update using the ID endpoint
+      if (settings.id) {
+        response = await fetch(`${apiUrl}/api/settings/${settings.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            store_name: settings.store_name,
+            store_description: settings.store_description,
+            store_url: settings.store_url,
+            payment_method_image: settings.payment_method_image,
+          }),
+        });
+      } else {
+        // Try the store endpoint first
+        response = await fetch(`${apiUrl}/api/settings/store`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            store_name: settings.store_name,
+            store_description: settings.store_description,
+            store_url: settings.store_url,
+            payment_method_image: settings.payment_method_image,
+          }),
+        });
+
+        // If 404, settings don't exist, try to create them
+        if (response.status === 404) {
+          await createInitialSettings();
+          return;
+        }
+      }
 
       if (response.ok) {
-        const data = await response.json();
+        data = await response.json();
         if (data.success) {
           setSettings(data.data);
           alert(data.message || 'Store settings saved successfully!');
         }
       } else {
         const error = await response.json();
-        if (response.status === 404) {
-          // Settings don't exist yet, create them
-          await createInitialSettings();
-        } else {
-          alert(`Error: ${error.error || 'Failed to save settings'}`);
-        }
+        alert(`Error: ${error.error || 'Failed to save settings'}`);
       }
     } catch (error) {
       console.error('Error saving store settings:', error);
@@ -166,7 +185,7 @@ const StoreSetting = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      if (!token) {
+      if (!token || !session?.user?.email) {
         alert('Please log in again to create settings.');
         return;
       }
@@ -179,10 +198,10 @@ const StoreSetting = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          first_name: 'Store',
-          last_name: 'Owner',
-          email_address: session.user?.email || 'store@example.com',
-          store_name: settings.store_name,
+          first_name: session.user.user_metadata?.full_name?.split(' ')[0] || 'Store',
+          last_name: session.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || 'Owner',
+          email_address: session.user.email,
+          store_name: settings.store_name || 'My Store',
           store_description: settings.store_description,
           store_url: settings.store_url,
           payment_method_image: settings.payment_method_image,
@@ -197,6 +216,47 @@ const StoreSetting = () => {
         }
       } else {
         const error = await response.json();
+        // If settings already exist, fetch and update them instead
+        if (error.error?.includes('already exists')) {
+          // Fetch existing settings
+          const getResponse = await fetch(`${apiUrl}/api/settings`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (getResponse.ok) {
+            const getData = await getResponse.json();
+            if (getData.success && getData.data.length > 0) {
+              const existingSettings = getData.data[0];
+              setSettings(existingSettings);
+              
+              // Update existing settings with current values
+              const updateResponse = await fetch(`${apiUrl}/api/settings/${existingSettings.id}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  store_name: settings.store_name || existingSettings.store_name,
+                  store_description: settings.store_description,
+                  store_url: settings.store_url,
+                  payment_method_image: settings.payment_method_image,
+                }),
+              });
+              
+              if (updateResponse.ok) {
+                const updateData = await updateResponse.json();
+                if (updateData.success) {
+                  setSettings(updateData.data);
+                  alert('Store settings updated successfully!');
+                  return;
+                }
+              }
+            }
+          }
+        }
         alert(`Error: ${error.error || 'Failed to create settings'}`);
       }
     } catch (error) {
