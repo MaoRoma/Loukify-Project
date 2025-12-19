@@ -60,9 +60,21 @@ const StoreSetting = () => {
   const fetchStoreSettings = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings`, {
+      
+      // Get auth token from Supabase session
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/settings`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -95,13 +107,25 @@ const StoreSetting = () => {
     try {
       setIsSaving(true);
       
+      // Get auth token from Supabase session
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        alert('Please log in again to save settings.');
+        setIsSaving(false);
+        return;
+      }
+      
       // Use the dedicated store endpoint for better handling
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/settings/store`;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const url = `${apiUrl}/api/settings/store`;
 
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -137,16 +161,27 @@ const StoreSetting = () => {
 
   const createInitialSettings = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings`, {
+      // Get auth token from Supabase session
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        alert('Please log in again to create settings.');
+        return;
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/settings`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           first_name: 'Store',
           last_name: 'Owner',
-          email_address: 'store@example.com',
+          email_address: session.user?.email || 'store@example.com',
           store_name: settings.store_name,
           store_description: settings.store_description,
           store_url: settings.store_url,
