@@ -229,9 +229,9 @@ export const api = {
     get: () => apiRequest('/api/settings'),
     getById: (id: string) => apiRequest(`/api/settings/${id}`),
     create: (data: {
-      first_name: string;
-      last_name: string;
-      email_address: string;
+      first_name?: string;
+      last_name?: string;
+      email_address?: string;
       phone_number?: string;
       store_name: string;
       store_description?: string;

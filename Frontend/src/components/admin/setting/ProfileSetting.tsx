@@ -78,22 +78,32 @@ export function ProfileSetting() {
     setIsSaving(true);
 
     try {
-      // Update user metadata with full name
-      if (user) {
-        const { supabase } = await import('@/lib/supabase/client');
-        const { error: updateError } = await supabase.auth.updateUser({
-          data: {
-            full_name: formData.fullName,
-          },
-        });
-
-        if (updateError) {
-          throw new Error(updateError.message || "Failed to update profile");
-        }
+      if (!user) {
+        throw new Error("User not authenticated");
       }
 
-      // Save store settings
+      // Update user metadata with full name
+      const { supabase } = await import('@/lib/supabase/client');
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          full_name: formData.fullName,
+        },
+      });
+
+      if (updateError) {
+        throw new Error(updateError.message || "Failed to update profile");
+      }
+
+      // Split full name into first and last name for backend compatibility
+      const nameParts = formData.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || "User";
+      const lastName = nameParts.slice(1).join(" ") || "Name";
+
+      // Prepare settings data
       const settingsData = {
+        first_name: firstName,
+        last_name: lastName,
+        email_address: formData.email,
         store_name: formData.storeName,
       };
 
@@ -101,7 +111,7 @@ export function ProfileSetting() {
         // Update existing settings
         await api.settings.update(currentSettingId, settingsData);
       } else {
-        // Create new settings
+        // Create new settings (backend requires first_name, last_name, email_address, store_name)
         const response = await api.settings.create(settingsData);
         if (response.data?.id) {
           setCurrentSettingId(response.data.id);
