@@ -53,25 +53,18 @@ export async function GET(
     // Fetch payment method image from settings - MUST be scoped to this store's user
     let paymentMethodImage = null;
     
-    // CRITICAL: Only fetch payment method image for THIS store's user to ensure multi-tenancy
     // Method 1: Use settings_id if available (most reliable and properly scoped)
     if (storeTemplate.settings_id) {
       const { data: settings, error: settingsError } = await supabaseAdmin
         .from('settings')
-        .select('payment_method_image, email_address')
+        .select('payment_method_image')
         .eq('id', storeTemplate.settings_id)
         .maybeSingle();
       
-      if (!settingsError && settings?.payment_method_image && settings.payment_method_image.trim() !== '') {
-        // Verify this settings belongs to the store's user (double-check for security)
-        try {
-          const { data: user } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
-          if (user?.user?.email === settings.email_address) {
-            paymentMethodImage = settings.payment_method_image;
-          }
-        } catch (verifyErr) {
-          // If verification fails, still use it if settings_id matches (it's already linked)
-          paymentMethodImage = settings.payment_method_image;
+      if (!settingsError && settings?.payment_method_image) {
+        const imageUrl = settings.payment_method_image.trim();
+        if (imageUrl !== '') {
+          paymentMethodImage = imageUrl;
         }
       }
     }
@@ -92,12 +85,15 @@ export async function GET(
             .limit(1)
             .maybeSingle();
           
-          if (!settingsError2 && settings?.payment_method_image && settings.payment_method_image.trim() !== '') {
-            paymentMethodImage = settings.payment_method_image;
+          if (!settingsError2 && settings?.payment_method_image) {
+            const imageUrl = settings.payment_method_image.trim();
+            if (imageUrl !== '') {
+              paymentMethodImage = imageUrl;
+            }
           }
         }
       } catch (userErr) {
-        // Silently fail - don't log to avoid noise
+        // Silently fail
       }
     }
 

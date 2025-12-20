@@ -161,6 +161,13 @@ export function Sidebar() {
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+          onClick={() => {
+            window.open(
+              'https://docs.google.com/document/d/1bJTKvamhR-T654oKv7t9Wh2gI-a2gBs-0mdffNNJSs8/edit?usp=sharing',
+              '_blank',
+              'noopener,noreferrer'
+            );
+          }}
         >
           <HelpCircle className="w-5 h-5" />
           <span>Help & Support</span>

@@ -164,7 +164,12 @@ const StoreSetting = () => {
         data = await response.json();
         if (data.success) {
           setSettings(data.data);
+          // Update image preview if payment method image was saved
+          if (data.data.payment_method_image) {
+            setImagePreview(data.data.payment_method_image);
+          }
           alert(data.message || 'Store settings saved successfully!');
+          console.log('Settings saved - payment_method_image:', data.data.payment_method_image);
         }
       } else {
         const error = await response.json();

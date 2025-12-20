@@ -68,6 +68,8 @@ export default function PublicStorePage() {
         
         if (response?.data) {
           setStore(response.data);
+          // Debug: Log payment method image
+          console.log('Store loaded - payment_method_image:', response.data.payment_method_image);
         } else {
           setError("Store not found");
         }

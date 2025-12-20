@@ -222,13 +222,30 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Settings not found or update failed' });
     }
 
-    // Sync with store_templates if store information was updated
-    if (store_name !== undefined || store_description !== undefined || store_url !== undefined) {
+    // Sync with store_templates if store information OR payment_method_image was updated
+    if (store_name !== undefined || store_description !== undefined || store_url !== undefined || payment_method_image !== undefined) {
       await syncStoreTemplate(req.user.id, {
         store_name: data.store_name,
         store_description: data.store_description,
         store_subdomain: data.store_url
       }, data.id);
+      
+      // Ensure settings_id is always linked when payment_method_image is updated
+      if (payment_method_image !== undefined) {
+        const { data: storeTemplate } = await supabaseAdmin
+          .from('store_templates')
+          .select('id')
+          .eq('user_id', req.user.id)
+          .limit(1)
+          .maybeSingle();
+        
+        if (storeTemplate) {
+          await supabaseAdmin
+            .from('store_templates')
+            .update({ settings_id: data.id })
+            .eq('id', storeTemplate.id);
+        }
+      }
     }
 
     res.status(200).json({ success: true, data });
@@ -293,12 +310,30 @@ router.put('/store', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    // Sync with store_templates
+    // Sync with store_templates - ALWAYS update settings_id to ensure payment_method_image is linked
     await syncStoreTemplate(req.user.id, {
       store_name,
       store_description,
       store_subdomain: store_url
     }, data.id);
+    
+    // Also ensure payment_method_image sync if it was updated
+    if (payment_method_image !== undefined) {
+      // Force update settings_id in store_templates to ensure link is maintained
+      const { data: storeTemplate } = await supabaseAdmin
+        .from('store_templates')
+        .select('id')
+        .eq('user_id', req.user.id)
+        .limit(1)
+        .maybeSingle();
+      
+      if (storeTemplate) {
+        await supabaseAdmin
+          .from('store_templates')
+          .update({ settings_id: data.id })
+          .eq('id', storeTemplate.id);
+      }
+    }
 
     res.status(200).json({ 
       success: true, 

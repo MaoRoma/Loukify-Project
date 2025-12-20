@@ -31,15 +31,23 @@ export function CheckoutPage({
   const { cartItems, cartTotal, clearCart } = useCart();
   const [showPaymentImage, setShowPaymentImage] = useState(false);
 
-  // Check if payment method image is available (handle empty strings)
-  const hasPaymentImage = paymentMethodImage && paymentMethodImage.trim() !== '';
+  // Check if payment method image is available (handle empty strings, null, undefined)
+  const hasPaymentImage = paymentMethodImage && 
+    typeof paymentMethodImage === 'string' && 
+    paymentMethodImage.trim() !== '';
 
-  // Auto-show image if available
+  // Auto-show image if available (like products - display immediately when available)
   useEffect(() => {
     if (hasPaymentImage) {
       setShowPaymentImage(true);
+    } else {
+      setShowPaymentImage(false);
     }
-  }, [hasPaymentImage]);
+    // Debug: Log payment method image status
+    if (typeof window !== 'undefined') {
+      console.log('CheckoutPage - paymentMethodImage:', paymentMethodImage, 'hasPaymentImage:', hasPaymentImage);
+    }
+  }, [hasPaymentImage, paymentMethodImage]);
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -245,73 +253,82 @@ export function CheckoutPage({
             >
               Payment Method
             </h2>
-            {hasPaymentImage && showPaymentImage ? (
-              <div className="space-y-3">
-                <div className="w-full flex items-center justify-center p-4 border rounded-lg bg-gray-50"
+            {hasPaymentImage ? (
+              showPaymentImage ? (
+                <div className="space-y-3">
+                  <div className="w-full flex items-center justify-center p-4 border rounded-lg bg-gray-50"
+                    style={{
+                      borderColor: colors.secondary,
+                      borderRadius: getButtonRadius(buttonStyle),
+                    }}
+                  >
+                    <img
+                      src={paymentMethodImage}
+                      alt="Payment QR Code"
+                      className="max-w-full h-auto max-h-64 object-contain"
+                      onError={(e) => {
+                        console.error('Failed to load payment method image:', paymentMethodImage);
+                        setShowPaymentImage(false);
+                      }}
+                    />
+                  </div>
+                  <p
+                    className="text-center text-sm"
+                    style={{
+                      color: colors.text,
+                      fontSize: `${typography.bodySize * 0.9}px`,
+                    }}
+                  >
+                    Scan the QR code to complete payment
+                  </p>
+                  <button
+                    onClick={() => setShowPaymentImage(false)}
+                    className="text-sm text-muted-foreground hover:text-foreground underline"
+                    style={{ color: colors.text }}
+                  >
+                    Hide QR Code
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowPaymentImage(true)}
+                  className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
                   style={{
                     borderColor: colors.secondary,
+                    fontSize: `${typography.bodySize}px`,
                     borderRadius: getButtonRadius(buttonStyle),
-                  }}
-                >
-                  <img
-                    src={paymentMethodImage}
-                    alt="Payment QR Code"
-                    className="max-w-full h-auto max-h-64 object-contain"
-                    onError={(e) => {
-                      console.error('Failed to load payment method image:', paymentMethodImage);
-                      setShowPaymentImage(false);
-                    }}
-                  />
-                </div>
-                <p
-                  className="text-center text-sm"
-                  style={{
                     color: colors.text,
-                    fontSize: `${typography.bodySize * 0.9}px`,
+                    backgroundColor: colors.secondary + '20',
                   }}
                 >
-                  Scan the QR code to complete payment
-                </p>
-                <button
-                  onClick={() => setShowPaymentImage(false)}
-                  className="text-sm text-muted-foreground hover:text-foreground underline"
-                  style={{ color: colors.text }}
-                >
-                  Hide QR Code
+                  <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    A
+                  </div>
+                  ABA Bank
+                  <span className="text-xs text-muted-foreground ml-2">
+                    (Click to view QR code)
+                  </span>
                 </button>
-              </div>
+              )
             ) : (
-              <button
-                onClick={() => {
-                  if (hasPaymentImage) {
-                    setShowPaymentImage(true);
-                  }
-                }}
-                className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              <div
+                className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2"
                 style={{
                   borderColor: colors.secondary,
                   fontSize: `${typography.bodySize}px`,
                   borderRadius: getButtonRadius(buttonStyle),
                   color: colors.text,
                   backgroundColor: colors.secondary + '20',
-                  cursor: hasPaymentImage ? 'pointer' : 'default',
                 }}
-                disabled={!hasPaymentImage}
               >
                 <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
                   A
                 </div>
                 ABA Bank
-                {hasPaymentImage ? (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    (Click to view QR code)
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    (Payment method not configured)
-                  </span>
-                )}
-              </button>
+                <span className="text-xs text-muted-foreground ml-2">
+                  (Payment method not configured)
+                </span>
+              </div>
             )}
           </div>
         </div>
