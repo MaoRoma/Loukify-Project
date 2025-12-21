@@ -55,11 +55,19 @@ export async function GET(
     
     // Method 1: Use settings_id if available (most reliable and properly scoped)
     if (storeTemplate.settings_id) {
+      console.log(`[Payment Method] Attempting to fetch via settings_id: ${storeTemplate.settings_id} for store ${subdomain}`);
       const { data: settings, error: settingsError } = await supabaseAdmin
         .from('settings')
         .select('payment_method_image, email_address')
         .eq('id', storeTemplate.settings_id)
         .maybeSingle();
+      
+      console.log(`[Payment Method] Settings query result for store ${subdomain}:`, { 
+        found: !!settings, 
+        hasImage: !!settings?.payment_method_image,
+        imageUrl: settings?.payment_method_image,
+        error: settingsError?.message 
+      });
       
       if (!settingsError && settings?.payment_method_image) {
         const imageUrl = settings.payment_method_image.trim();
@@ -69,26 +77,39 @@ export async function GET(
             const { data: user } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
             if (user?.user?.email === settings.email_address) {
               paymentMethodImage = imageUrl;
-              console.log(`[Payment Method] Found via settings_id for store ${subdomain}:`, paymentMethodImage);
+              console.log(`[Payment Method] ✅ Found via settings_id for store ${subdomain}:`, paymentMethodImage);
             } else {
-              console.warn(`[Payment Method] Settings email mismatch for store ${subdomain}`);
+              console.warn(`[Payment Method] ⚠️ Settings email mismatch for store ${subdomain}`, {
+                settingsEmail: settings.email_address,
+                storeUserEmail: user?.user?.email
+              });
             }
           } catch (verifyErr) {
             // If verification fails, still use it if settings_id matches (it's already linked)
             paymentMethodImage = imageUrl;
-            console.log(`[Payment Method] Found via settings_id (verification skipped) for store ${subdomain}:`, paymentMethodImage);
+            console.log(`[Payment Method] ✅ Found via settings_id (verification skipped) for store ${subdomain}:`, paymentMethodImage);
           }
+        } else {
+          console.warn(`[Payment Method] ⚠️ Settings found but payment_method_image is empty for store ${subdomain}`);
         }
       } else if (settingsError) {
-        console.warn(`[Payment Method] Error fetching settings by settings_id for store ${subdomain}:`, settingsError);
+        console.warn(`[Payment Method] ❌ Error fetching settings by settings_id for store ${subdomain}:`, settingsError);
+      } else if (!settings) {
+        console.warn(`[Payment Method] ❌ No settings found with settings_id ${storeTemplate.settings_id} for store ${subdomain}`);
+      } else if (!settings.payment_method_image) {
+        console.warn(`[Payment Method] ⚠️ Settings found but no payment_method_image for store ${subdomain}`);
       }
+    } else {
+      console.warn(`[Payment Method] ⚠️ No settings_id in store template for store ${subdomain}`);
     }
     
     // Method 2: If not found via settings_id, try by user_id and email (ensures user-specific)
     if (!paymentMethodImage && storeTemplate.user_id) {
+      console.log(`[Payment Method] Attempting fallback via user_id: ${storeTemplate.user_id} for store ${subdomain}`);
       try {
         const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
         if (!userError && user?.user?.email) {
+          console.log(`[Payment Method] Found user email: ${user.user.email} for store ${subdomain}`);
           // IMPORTANT: Only get settings for THIS user's email to ensure isolation
           const { data: settings, error: settingsError2 } = await supabaseAdmin
             .from('settings')
@@ -100,23 +121,41 @@ export async function GET(
             .limit(1)
             .maybeSingle();
           
+          console.log(`[Payment Method] Fallback query result for store ${subdomain}:`, { 
+            found: !!settings, 
+            hasImage: !!settings?.payment_method_image,
+            imageUrl: settings?.payment_method_image,
+            error: settingsError2?.message 
+          });
+          
           if (!settingsError2 && settings?.payment_method_image) {
             const imageUrl = settings.payment_method_image.trim();
             if (imageUrl !== '') {
               paymentMethodImage = imageUrl;
-              console.log(`[Payment Method] Found via user email (fallback) for store ${subdomain}:`, paymentMethodImage);
+              console.log(`[Payment Method] ✅ Found via user email (fallback) for store ${subdomain}:`, paymentMethodImage);
             }
           } else if (settingsError2) {
-            console.warn(`[Payment Method] Error fetching settings by email for store ${subdomain}:`, settingsError2);
+            console.warn(`[Payment Method] ❌ Error fetching settings by email for store ${subdomain}:`, settingsError2);
+          } else if (!settings) {
+            console.warn(`[Payment Method] ❌ No settings found for email ${user.user.email} for store ${subdomain}`);
+          } else if (!settings.payment_method_image) {
+            console.warn(`[Payment Method] ⚠️ Settings found but no payment_method_image for email ${user.user.email} for store ${subdomain}`);
           }
+        } else {
+          console.warn(`[Payment Method] ❌ Could not get user email for user_id ${storeTemplate.user_id} for store ${subdomain}:`, userError);
         }
       } catch (userErr) {
-        console.warn(`[Payment Method] Error fetching user for store ${subdomain}:`, userErr);
+        console.warn(`[Payment Method] ❌ Error fetching user for store ${subdomain}:`, userErr);
       }
     }
 
     if (!paymentMethodImage) {
-      console.warn(`[Payment Method] No payment method image found for store ${subdomain} (settings_id: ${storeTemplate.settings_id}, user_id: ${storeTemplate.user_id})`);
+      console.warn(`[Payment Method] ❌ No payment method image found for store ${subdomain}`, {
+        settings_id: storeTemplate.settings_id,
+        user_id: storeTemplate.user_id
+      });
+    } else {
+      console.log(`[Payment Method] ✅ Final payment method image for store ${subdomain}:`, paymentMethodImage);
     }
 
     // Add payment_method_image to the response
@@ -124,6 +163,8 @@ export async function GET(
       ...storeTemplate,
       payment_method_image: paymentMethodImage
     };
+
+    console.log(`[Payment Method] 📦 Response data includes payment_method_image:`, !!responseData.payment_method_image, 'for store', subdomain);
 
     return NextResponse.json({ success: true, data: responseData });
   } catch (err: any) {

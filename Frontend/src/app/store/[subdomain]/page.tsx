@@ -66,6 +66,8 @@ export default function PublicStorePage() {
         setLoading(true);
         const response = await api.storeTemplates.getBySubdomain(subdomain);
         
+        console.log('[Store Page] Raw API response:', response);
+        
         if (response?.data) {
           setStore(response.data);
           // Debug: Log payment method image
@@ -74,9 +76,18 @@ export default function PublicStorePage() {
             store_name: response.data.store_name,
             payment_method_image: response.data.payment_method_image,
             settings_id: response.data.settings_id,
-            user_id: response.data.user_id
+            user_id: response.data.user_id,
+            fullStoreData: response.data // Include full data for debugging
           });
+          
+          // Verify payment_method_image is actually set
+          if (!response.data.payment_method_image) {
+            console.warn('[Store Page] ⚠️ WARNING: payment_method_image is missing from store data!');
+          } else {
+            console.log('[Store Page] ✅ payment_method_image found:', response.data.payment_method_image);
+          }
         } else {
+          console.error('[Store Page] ❌ No data in response:', response);
           setError("Store not found");
         }
 

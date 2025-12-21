@@ -38,11 +38,16 @@ export function CheckoutPage({
 
   // Auto-show image if available (like products - display immediately when available)
   useEffect(() => {
+    console.log('[CheckoutPage] useEffect triggered - paymentMethodImage prop:', paymentMethodImage);
+    
     if (hasPaymentImage) {
       setShowPaymentImage(true);
+      console.log('[CheckoutPage] ✅ Setting showPaymentImage to true');
     } else {
       setShowPaymentImage(false);
+      console.log('[CheckoutPage] ⚠️ Setting showPaymentImage to false - hasPaymentImage:', hasPaymentImage);
     }
+    
     // Debug: Log payment method image status
     if (typeof window !== 'undefined') {
       console.log('[CheckoutPage] Payment method image status:', {
@@ -50,7 +55,9 @@ export function CheckoutPage({
         hasPaymentImage,
         showPaymentImage,
         type: typeof paymentMethodImage,
-        length: paymentMethodImage?.length
+        length: paymentMethodImage?.length,
+        trimmed: paymentMethodImage?.trim(),
+        isEmpty: paymentMethodImage?.trim() === ''
       });
     }
   }, [hasPaymentImage, paymentMethodImage]);
