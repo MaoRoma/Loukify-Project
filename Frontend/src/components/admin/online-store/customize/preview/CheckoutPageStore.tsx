@@ -86,7 +86,8 @@ export function CheckoutPage({
 
       const customerLocation = city ? `${address}, ${city}` : address;
 
-      // 1) Create customer
+      // 1) Get or create customer (backend handles reuse of existing customers)
+      // This allows customers to place multiple orders with the same email
       const customerResponse = await api.customers.create({
         customer_name: fullName,
         customer_email: email,
@@ -96,7 +97,14 @@ export function CheckoutPage({
 
       const customer = customerResponse?.data;
       if (!customer || !customer.customer_id) {
-        throw new Error("Failed to create customer record.");
+        throw new Error("Failed to create or find customer record.");
+      }
+
+      // Log if customer was reused or created
+      if (customerResponse.message?.includes('reused')) {
+        console.log('[CheckoutPage] Reusing existing customer:', customer.customer_id);
+      } else {
+        console.log('[CheckoutPage] Created new customer:', customer.customer_id);
       }
 
       // 2) Create order linked to this customer

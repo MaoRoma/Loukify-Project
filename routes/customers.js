@@ -117,8 +117,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 /**
  * POST /api/customers
- * Create a new customer (automatically associated with user's store)
+ * Create a new customer OR return existing customer if email matches (allows multiple orders)
  * Body: { customer_name, customer_email, customer_phone, customer_location }
+ * 
+ * This endpoint uses a "get or create" pattern:
+ * - If customer with this email exists for this store, reuse it (update info if changed)
+ * - If customer doesn't exist, create a new one
+ * - This allows customers to place multiple orders with the same email
  */
 router.post('/', authenticateToken, async (req, res) => {
   try {
@@ -139,20 +144,104 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Store not found for this user. Please create a store first.' });
     }
 
+    // Check if customer with this email already exists for this store
+    const { data: existingCustomer, error: findError } = await supabaseAdmin
+      .from('customers')
+      .select('*')
+      .eq('store_id', storeTemplate.id)
+      .eq('customer_email', customer_email.toLowerCase().trim())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (findError && findError.code !== 'PGRST116') {
+      // PGRST116 means no rows found, which is fine
+      console.error('Error finding existing customer:', findError);
+    }
+
+    if (existingCustomer) {
+      // Customer exists - update their info if it changed and return existing customer
+      const updateData = {};
+      let needsUpdate = false;
+
+      if (customer_name && customer_name.trim() !== existingCustomer.customer_name) {
+        updateData.customer_name = customer_name.trim();
+        needsUpdate = true;
+      }
+      if (customer_phone !== undefined && customer_phone !== existingCustomer.customer_phone) {
+        updateData.customer_phone = customer_phone || null;
+        needsUpdate = true;
+      }
+      if (customer_location !== undefined && customer_location !== existingCustomer.customer_location) {
+        updateData.customer_location = customer_location || null;
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        const { data: updatedCustomer, error: updateError } = await supabaseAdmin
+          .from('customers')
+          .update(updateData)
+          .eq('customer_id', existingCustomer.customer_id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('Error updating customer:', updateError);
+          // Return existing customer even if update failed
+          return res.status(200).json({ 
+            success: true, 
+            data: existingCustomer,
+            message: 'Existing customer reused (update failed)'
+          });
+        }
+
+        return res.status(200).json({ 
+          success: true, 
+          data: updatedCustomer,
+          message: 'Existing customer updated and reused'
+        });
+      }
+
+      // No updates needed, return existing customer
+      return res.status(200).json({ 
+        success: true, 
+        data: existingCustomer,
+        message: 'Existing customer reused'
+      });
+    }
+
+    // Customer doesn't exist - create new one
     const { data, error } = await supabaseAdmin
       .from('customers')
       .insert({
-        customer_name,
-        customer_email,
-        customer_phone,
-        customer_location,
+        customer_name: customer_name.trim(),
+        customer_email: customer_email.toLowerCase().trim(),
+        customer_phone: customer_phone || null,
+        customer_location: customer_location || null,
         store_id: storeTemplate.id
       })
       .select()
       .single();
 
     if (error) {
+      // If unique constraint error, try to find existing customer again
       if (error.code === '23505') {
+        const { data: foundCustomer } = await supabaseAdmin
+          .from('customers')
+          .select('*')
+          .eq('store_id', storeTemplate.id)
+          .eq('customer_email', customer_email.toLowerCase().trim())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (foundCustomer) {
+          return res.status(200).json({ 
+            success: true, 
+            data: foundCustomer,
+            message: 'Existing customer found and reused'
+          });
+        }
         return res.status(400).json({ error: 'Customer with this email already exists' });
       }
       return res.status(400).json({ error: error.message });
@@ -200,7 +289,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     if (error || !data) {
       if (error?.code === '23505') {
-        return res.status(400).json({ error: 'Customer with this email already exists' });
+        // Unique constraint violation - but we allow duplicates now, so this shouldn't happen
+        // If it does, it means there's still a constraint somewhere
+        return res.status(400).json({ 
+          error: 'Customer with this email already exists. Please ensure the unique constraint has been removed.' 
+        });
       }
       return res.status(404).json({ error: 'Customer not found or update failed' });
     }
