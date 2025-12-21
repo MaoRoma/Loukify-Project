@@ -104,6 +104,7 @@ export async function GET(
     }
     
     // Method 2: If not found via settings_id, try by user_id and email (ensures user-specific)
+    // This is CRITICAL when settings_id is null/undefined
     if (!paymentMethodImage && storeTemplate.user_id) {
       console.log(`[Payment Method] Attempting fallback via user_id: ${storeTemplate.user_id} for store ${subdomain}`);
       try {
@@ -111,35 +112,55 @@ export async function GET(
         if (!userError && user?.user?.email) {
           console.log(`[Payment Method] Found user email: ${user.user.email} for store ${subdomain}`);
           // IMPORTANT: Only get settings for THIS user's email to ensure isolation
+          // Don't filter by null/empty - get all settings for this user, then check the image
           const { data: settings, error: settingsError2 } = await supabaseAdmin
             .from('settings')
-            .select('payment_method_image')
+            .select('payment_method_image, id')
             .eq('email_address', user.user.email) // This ensures user-specific isolation
-            .not('payment_method_image', 'is', null)
-            .neq('payment_method_image', '') // Exclude empty strings
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
           
           console.log(`[Payment Method] Fallback query result for store ${subdomain}:`, { 
             found: !!settings, 
+            settingsId: settings?.id,
             hasImage: !!settings?.payment_method_image,
             imageUrl: settings?.payment_method_image,
+            imageUrlLength: settings?.payment_method_image?.length,
             error: settingsError2?.message 
           });
           
-          if (!settingsError2 && settings?.payment_method_image) {
-            const imageUrl = settings.payment_method_image.trim();
-            if (imageUrl !== '') {
-              paymentMethodImage = imageUrl;
-              console.log(`[Payment Method] ✅ Found via user email (fallback) for store ${subdomain}:`, paymentMethodImage);
+          if (!settingsError2 && settings) {
+            // If we found settings but settings_id wasn't linked, try to link it now
+            if (!storeTemplate.settings_id && settings.id) {
+              console.log(`[Payment Method] 🔗 Linking settings_id ${settings.id} to store template for store ${subdomain}`);
+              try {
+                await supabaseAdmin
+                  .from('store_templates')
+                  .update({ settings_id: settings.id })
+                  .eq('id', storeTemplate.id);
+                console.log(`[Payment Method] ✅ Successfully linked settings_id to store template`);
+              } catch (linkError) {
+                console.warn(`[Payment Method] ⚠️ Failed to link settings_id:`, linkError);
+              }
+            }
+            
+            // Check if payment_method_image exists and is not empty
+            if (settings.payment_method_image) {
+              const imageUrl = settings.payment_method_image.trim();
+              if (imageUrl !== '') {
+                paymentMethodImage = imageUrl;
+                console.log(`[Payment Method] ✅ Found via user email (fallback) for store ${subdomain}:`, paymentMethodImage);
+              } else {
+                console.warn(`[Payment Method] ⚠️ Settings found but payment_method_image is empty string for email ${user.user.email} for store ${subdomain}`);
+              }
+            } else {
+              console.warn(`[Payment Method] ⚠️ Settings found but no payment_method_image field for email ${user.user.email} for store ${subdomain}`);
             }
           } else if (settingsError2) {
             console.warn(`[Payment Method] ❌ Error fetching settings by email for store ${subdomain}:`, settingsError2);
           } else if (!settings) {
             console.warn(`[Payment Method] ❌ No settings found for email ${user.user.email} for store ${subdomain}`);
-          } else if (!settings.payment_method_image) {
-            console.warn(`[Payment Method] ⚠️ Settings found but no payment_method_image for email ${user.user.email} for store ${subdomain}`);
           }
         } else {
           console.warn(`[Payment Method] ❌ Could not get user email for user_id ${storeTemplate.user_id} for store ${subdomain}:`, userError);

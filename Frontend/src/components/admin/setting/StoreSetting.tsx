@@ -338,6 +338,10 @@ const StoreSetting = () => {
         const imageUrl = uploadData.data.publicUrl;
         setSettings(prev => ({ ...prev, payment_method_image: imageUrl }));
         setImagePreview(imageUrl);
+        
+        // Auto-save the payment method image immediately after upload
+        console.log('[StoreSetting] Auto-saving payment method image:', imageUrl);
+        await autoSavePaymentMethodImage(imageUrl);
       } else {
         throw new Error('Failed to get image URL');
       }
@@ -346,6 +350,73 @@ const StoreSetting = () => {
       alert(error.message || 'Failed to upload image. Please try again.');
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const autoSavePaymentMethodImage = async (imageUrl: string) => {
+    try {
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        console.warn('[StoreSetting] Cannot auto-save: No auth token');
+        return;
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      
+      // If settings ID exists, update it
+      if (settings.id) {
+        const response = await fetch(`${apiUrl}/api/settings/${settings.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            payment_method_image: imageUrl,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            console.log('[StoreSetting] ✅ Payment method image auto-saved successfully');
+            setSettings(data.data); // Update with latest data including settings_id
+          }
+        } else {
+          const error = await response.json();
+          console.warn('[StoreSetting] ⚠️ Auto-save failed:', error);
+        }
+      } else {
+        // If no settings exist, use the store endpoint
+        const response = await fetch(`${apiUrl}/api/settings/store`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            store_name: settings.store_name || 'My Store',
+            payment_method_image: imageUrl,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            console.log('[StoreSetting] ✅ Payment method image auto-saved successfully');
+            setSettings(data.data); // Update with latest data including ID
+          }
+        } else {
+          const error = await response.json();
+          console.warn('[StoreSetting] ⚠️ Auto-save failed:', error);
+        }
+      }
+    } catch (error) {
+      console.error('[StoreSetting] Error auto-saving payment method image:', error);
+      // Don't show alert - just log it, user can still save manually
     }
   };
 

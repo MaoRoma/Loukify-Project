@@ -36,29 +36,31 @@ export function CheckoutPage({
     typeof paymentMethodImage === 'string' && 
     paymentMethodImage.trim() !== '';
 
-  // Auto-show image if available (like products - display immediately when available)
+  // Don't auto-show image - let user click the button to view it
   useEffect(() => {
     console.log('[CheckoutPage] useEffect triggered - paymentMethodImage prop:', paymentMethodImage);
     
-    if (hasPaymentImage) {
-      setShowPaymentImage(true);
-      console.log('[CheckoutPage] ✅ Setting showPaymentImage to true');
-    } else {
-      setShowPaymentImage(false);
-      console.log('[CheckoutPage] ⚠️ Setting showPaymentImage to false - hasPaymentImage:', hasPaymentImage);
-    }
+    // Reset showPaymentImage when paymentMethodImage changes
+    // User needs to click the button to view the image
+    setShowPaymentImage(false);
     
     // Debug: Log payment method image status
     if (typeof window !== 'undefined') {
       console.log('[CheckoutPage] Payment method image status:', {
         paymentMethodImage,
         hasPaymentImage,
-        showPaymentImage,
+        showPaymentImage: false, // Always start as false
         type: typeof paymentMethodImage,
         length: paymentMethodImage?.length,
         trimmed: paymentMethodImage?.trim(),
         isEmpty: paymentMethodImage?.trim() === ''
       });
+      
+      if (hasPaymentImage) {
+        console.log('[CheckoutPage] ✅ Payment method image is available - user can click ABA Bank button to view');
+      } else {
+        console.warn('[CheckoutPage] ⚠️ Payment method image is NOT available');
+      }
     }
   }, [hasPaymentImage, paymentMethodImage]);
 
@@ -280,8 +282,12 @@ export function CheckoutPage({
                       alt="Payment QR Code"
                       className="max-w-full h-auto max-h-64 object-contain"
                       onError={(e) => {
-                        console.error('Failed to load payment method image:', paymentMethodImage);
+                        console.error('[CheckoutPage] ❌ Failed to load payment method image:', paymentMethodImage);
                         setShowPaymentImage(false);
+                        alert('Failed to load payment QR code image. Please check your settings.');
+                      }}
+                      onLoad={() => {
+                        console.log('[CheckoutPage] ✅ Payment method image loaded successfully');
                       }}
                     />
                   </div>
@@ -295,8 +301,11 @@ export function CheckoutPage({
                     Scan the QR code to complete payment
                   </p>
                   <button
-                    onClick={() => setShowPaymentImage(false)}
-                    className="text-sm text-muted-foreground hover:text-foreground underline"
+                    onClick={() => {
+                      setShowPaymentImage(false);
+                      console.log('[CheckoutPage] User clicked Hide QR Code');
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
                     style={{ color: colors.text }}
                   >
                     Hide QR Code
@@ -304,7 +313,10 @@ export function CheckoutPage({
                 </div>
               ) : (
                 <button
-                  onClick={() => setShowPaymentImage(true)}
+                  onClick={() => {
+                    console.log('[CheckoutPage] User clicked ABA Bank button - showing QR code');
+                    setShowPaymentImage(true);
+                  }}
                   className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
                   style={{
                     borderColor: colors.secondary,
