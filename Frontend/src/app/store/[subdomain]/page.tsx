@@ -67,6 +67,12 @@ export default function PublicStorePage() {
         const response = await api.storeTemplates.getBySubdomain(subdomain);
         
         console.log('[Store Page] Raw API response:', response);
+        console.log('[Store Page] Response structure:', {
+          hasResponse: !!response,
+          hasData: !!response?.data,
+          responseKeys: response ? Object.keys(response) : [],
+          dataKeys: response?.data ? Object.keys(response.data) : []
+        });
         
         if (response?.data) {
           setStore(response.data);
@@ -75,6 +81,8 @@ export default function PublicStorePage() {
             subdomain,
             store_name: response.data.store_name,
             payment_method_image: response.data.payment_method_image,
+            payment_method_image_type: typeof response.data.payment_method_image,
+            payment_method_image_length: response.data.payment_method_image?.length,
             settings_id: response.data.settings_id,
             user_id: response.data.user_id,
             fullStoreData: response.data // Include full data for debugging
@@ -83,6 +91,11 @@ export default function PublicStorePage() {
           // Verify payment_method_image is actually set
           if (!response.data.payment_method_image) {
             console.warn('[Store Page] ⚠️ WARNING: payment_method_image is missing from store data!');
+            console.warn('[Store Page] This could mean:');
+            console.warn('  1. No payment method image has been uploaded in Settings → Store');
+            console.warn('  2. The image was uploaded but not saved properly');
+            console.warn('  3. The settings_id is not linked to store_templates');
+            console.warn('  4. Check Vercel server logs for [Payment Method] logs');
           } else {
             console.log('[Store Page] ✅ payment_method_image found:', response.data.payment_method_image);
           }
