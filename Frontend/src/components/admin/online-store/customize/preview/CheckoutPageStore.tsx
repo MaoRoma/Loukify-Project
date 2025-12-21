@@ -45,7 +45,13 @@ export function CheckoutPage({
     }
     // Debug: Log payment method image status
     if (typeof window !== 'undefined') {
-      console.log('CheckoutPage - paymentMethodImage:', paymentMethodImage, 'hasPaymentImage:', hasPaymentImage);
+      console.log('[CheckoutPage] Payment method image status:', {
+        paymentMethodImage,
+        hasPaymentImage,
+        showPaymentImage,
+        type: typeof paymentMethodImage,
+        length: paymentMethodImage?.length
+      });
     }
   }, [hasPaymentImage, paymentMethodImage]);
 

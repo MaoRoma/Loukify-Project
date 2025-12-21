@@ -77,13 +77,21 @@ async function syncStoreTemplate(userId, storeData, settingsId = null) {
 
 /**
  * GET /api/settings
- * Get settings (returns array for consistency with other endpoints)
+ * Get settings for the authenticated user (returns array for consistency with other endpoints)
+ * CRITICAL: Must filter by user's email to ensure multi-tenancy
  */
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    const userEmail = req.user.email;
+    if (!userEmail) {
+      return res.status(400).json({ error: 'User email not found in token' });
+    }
+
+    // CRITICAL: Filter by user's email to ensure each user only sees their own settings
     const { data, error } = await supabaseAdmin
       .from('settings')
       .select('*')
+      .eq('email_address', userEmail) // Filter by authenticated user's email
       .order('created_at', { ascending: false })
       .limit(1);
 

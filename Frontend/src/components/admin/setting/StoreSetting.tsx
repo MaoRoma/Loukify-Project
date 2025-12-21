@@ -87,7 +87,20 @@ const StoreSetting = () => {
           if (fetchedSettings.payment_method_image) {
             setImagePreview(fetchedSettings.payment_method_image);
           }
+          // Debug: Log fetched settings
+          console.log('[StoreSetting] Fetched settings:', {
+            id: fetchedSettings.id,
+            email_address: fetchedSettings.email_address,
+            store_name: fetchedSettings.store_name,
+            payment_method_image: fetchedSettings.payment_method_image,
+            hasImage: !!fetchedSettings.payment_method_image
+          });
+        } else {
+          console.log('[StoreSetting] No settings found for current user');
         }
+      } else {
+        const errorData = await response.json();
+        console.error('[StoreSetting] Error fetching settings:', errorData);
       }
     } catch (error) {
       console.error('Error fetching store settings:', error);
