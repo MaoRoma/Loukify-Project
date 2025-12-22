@@ -49,6 +49,7 @@ const StoreSetting = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingPayment, setIsSavingPayment] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -424,6 +425,27 @@ const StoreSetting = () => {
     setSettings(prev => ({ ...prev, payment_method_image: "" }));
     setImagePreview(null);
   };
+
+  // Explicit Save button handler for Payment Method section
+  const handleSavePaymentMethod = async () => {
+    try {
+      setIsSavingPayment(true);
+
+      if (!settings.payment_method_image || settings.payment_method_image.trim() === "") {
+        alert("Please upload a payment method image before saving.");
+        return;
+      }
+
+      console.log("[StoreSetting] Manually saving payment method image:", settings.payment_method_image);
+      await autoSavePaymentMethodImage(settings.payment_method_image);
+      alert("Payment method saved successfully!");
+    } catch (error: any) {
+      console.error("[StoreSetting] Error saving payment method:", error);
+      alert(error?.message || "Failed to save payment method. Please try again.");
+    } finally {
+      setIsSavingPayment(false);
+    }
+  };
   return (
     <div className="bg-card rounded-lg border border-border p-6">
       <div className="flex items-start gap-3 mb-6">
@@ -566,6 +588,18 @@ const StoreSetting = () => {
             <p className="text-xs text-muted-foreground">
               Supported formats: JPG, PNG, GIF. Max size: 10MB
             </p>
+          </div>
+
+          <div className="pt-2">
+            <Button
+              type="button"
+              className="bg-primary hover:bg-primary/90"
+              onClick={handleSavePaymentMethod}
+              disabled={isSavingPayment || !settings.payment_method_image}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isSavingPayment ? "Saving..." : "Save Payment Method"}
+            </Button>
           </div>
         </div>
       </div>
