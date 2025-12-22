@@ -15,7 +15,7 @@ async function syncStoreTemplate(userId, storeData, settingsId = null) {
     // Check if user already has a store template
     const { data: existing } = await supabaseAdmin
       .from('store_templates')
-      .select('id')
+      .select('id, store_subdomain')
       .eq('user_id', userId)
       .limit(1)
       .single();
@@ -23,10 +23,23 @@ async function syncStoreTemplate(userId, storeData, settingsId = null) {
     if (existing) {
       // Update existing template
       const updateData = {};
-      if (store_name !== undefined) updateData.store_name = store_name;
-      if (store_subdomain !== undefined) updateData.store_subdomain = store_subdomain;
-      // CRITICAL: Always update settings_id when provided to ensure proper linking
-      // This ensures each store template is linked to the correct settings record
+
+      if (store_name !== undefined) {
+        updateData.store_name = store_name;
+      }
+
+      // CRITICAL: Only update store_subdomain if a new non-empty value is provided.
+      // This prevents overwriting an existing working subdomain with null/empty
+      // when the user is just updating payment method or other settings.
+      if (
+        store_subdomain !== undefined &&
+        store_subdomain !== null &&
+        String(store_subdomain).trim() !== ''
+      ) {
+        updateData.store_subdomain = String(store_subdomain).trim();
+      }
+
+      // Always update settings_id when provided to ensure proper linking
       if (settingsId !== undefined && settingsId !== null) {
         updateData.settings_id = settingsId;
       }
@@ -47,10 +60,12 @@ async function syncStoreTemplate(userId, storeData, settingsId = null) {
         };
       }
 
-      await supabaseAdmin
-        .from('store_templates')
-        .update(updateData)
-        .eq('id', existing.id);
+      if (Object.keys(updateData).length > 0) {
+        await supabaseAdmin
+          .from('store_templates')
+          .update(updateData)
+          .eq('id', existing.id);
+      }
     } else {
       // Create new template
       await supabaseAdmin
@@ -59,7 +74,10 @@ async function syncStoreTemplate(userId, storeData, settingsId = null) {
           user_id: userId,
           settings_id: settingsId,
           store_name: store_name || null,
-          store_subdomain: store_subdomain || null,
+          store_subdomain:
+            store_subdomain && String(store_subdomain).trim() !== ''
+              ? String(store_subdomain).trim()
+              : null,
           header_part: {
             title: store_name || '',
             description: store_description || '',
@@ -232,10 +250,22 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Sync with store_templates if store information OR payment_method_image was updated
     if (store_name !== undefined || store_description !== undefined || store_url !== undefined || payment_method_image !== undefined) {
+      // Preserve existing subdomain if a new one is not provided
+      let storeSubdomainToUse = data.store_url;
+      if (!storeSubdomainToUse || String(storeSubdomainToUse).trim() === '') {
+        const { data: currentTemplate } = await supabaseAdmin
+          .from('store_templates')
+          .select('store_subdomain')
+          .eq('user_id', req.user.id)
+          .limit(1)
+          .maybeSingle();
+        storeSubdomainToUse = currentTemplate?.store_subdomain || null;
+      }
+
       await syncStoreTemplate(req.user.id, {
         store_name: data.store_name,
         store_description: data.store_description,
-        store_subdomain: data.store_url
+        store_subdomain: storeSubdomainToUse
       }, data.id);
       
       // Ensure settings_id is always linked when payment_method_image is updated
@@ -319,10 +349,22 @@ router.put('/store', authenticateToken, async (req, res) => {
     }
 
     // Sync with store_templates - ALWAYS update settings_id to ensure payment_method_image is linked
+    // Preserve existing subdomain if a new one is not provided
+    let storeSubdomainToUse = store_url;
+    if (!storeSubdomainToUse || String(storeSubdomainToUse).trim() === '') {
+      const { data: currentTemplate } = await supabaseAdmin
+        .from('store_templates')
+        .select('store_subdomain')
+        .eq('user_id', req.user.id)
+        .limit(1)
+        .maybeSingle();
+      storeSubdomainToUse = currentTemplate?.store_subdomain || null;
+    }
+
     await syncStoreTemplate(req.user.id, {
       store_name,
       store_description,
-      store_subdomain: store_url
+      store_subdomain: storeSubdomainToUse
     }, data.id);
     
     // Also ensure payment_method_image sync if it was updated
