@@ -38,7 +38,41 @@ export async function GET(
   try {
     const { subdomain } = await params;
 
-    // Fetch store template
+    console.log(`[Subdomain API] Fetching store for subdomain: "${subdomain}"`);
+
+    // First, check if ANY store exists with this subdomain (even if not published)
+    const { data: anyStore, error: anyStoreError } = await supabaseAdmin
+      .from('store_templates')
+      .select('id, store_subdomain, is_published, user_id')
+      .eq('store_subdomain', subdomain)
+      .maybeSingle();
+
+    if (anyStoreError) {
+      console.error(`[Subdomain API] Error querying store_templates:`, anyStoreError);
+    }
+
+    if (anyStore) {
+      console.log(`[Subdomain API] Found store with subdomain "${subdomain}":`, {
+        id: anyStore.id,
+        is_published: anyStore.is_published,
+        store_subdomain: anyStore.store_subdomain,
+        user_id: anyStore.user_id
+      });
+    } else {
+      console.warn(`[Subdomain API] ⚠️ No store found with subdomain "${subdomain}"`);
+      // Check if there are any stores with null subdomain for debugging
+      const { data: nullSubdomainStores } = await supabaseAdmin
+        .from('store_templates')
+        .select('id, store_subdomain, is_published, user_id')
+        .is('store_subdomain', null)
+        .limit(5);
+      
+      if (nullSubdomainStores && nullSubdomainStores.length > 0) {
+        console.warn(`[Subdomain API] ⚠️ Found ${nullSubdomainStores.length} stores with NULL subdomain. This might be the issue.`);
+      }
+    }
+
+    // Fetch store template (must be published)
     const { data: storeTemplate, error: storeError } = await supabaseAdmin
       .from('store_templates')
       .select('*')
@@ -46,9 +80,28 @@ export async function GET(
       .eq('is_published', true)
       .maybeSingle();
 
-    if (storeError || !storeTemplate) {
-      return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+    if (storeError) {
+      console.error(`[Subdomain API] Database error:`, storeError);
+      return NextResponse.json({ 
+        error: 'Store not found',
+        details: `Database error: ${storeError.message}`
+      }, { status: 404 });
     }
+
+    if (!storeTemplate) {
+      console.error(`[Subdomain API] Store not found or not published for subdomain: "${subdomain}"`);
+      return NextResponse.json({ 
+        error: 'Store not found',
+        details: `No published store found with subdomain "${subdomain}". The store may not be published or the subdomain may have been removed.`
+      }, { status: 404 });
+    }
+
+    console.log(`[Subdomain API] ✅ Successfully found published store:`, {
+      id: storeTemplate.id,
+      store_name: storeTemplate.store_name,
+      store_subdomain: storeTemplate.store_subdomain,
+      is_published: storeTemplate.is_published
+    });
 
     // Fetch payment method image from settings - MUST be scoped to this store's user
     let paymentMethodImage = null;

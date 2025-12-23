@@ -251,9 +251,38 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Settings not found or update failed' });
     }
 
-    // Sync with store_templates if store information OR payment_method_image was updated
-    // CRITICAL: When ONLY payment_method_image is updated, we must preserve the existing subdomain
-    if (store_name !== undefined || store_description !== undefined || store_url !== undefined || payment_method_image !== undefined) {
+    // CRITICAL: Separate logic for store data updates vs payment_method_image updates
+    // When ONLY payment_method_image is updated, we should NOT touch store_subdomain at all
+    
+    const isOnlyPaymentMethodUpdate = 
+      payment_method_image !== undefined && 
+      store_name === undefined && 
+      store_description === undefined && 
+      store_url === undefined;
+    
+    if (isOnlyPaymentMethodUpdate) {
+      // ONLY updating payment_method_image - just link settings_id, don't touch store data
+      console.log('[Settings] Only payment_method_image updated - preserving store_subdomain');
+      const { data: storeTemplate } = await supabaseAdmin
+        .from('store_templates')
+        .select('id, store_subdomain')
+        .eq('user_id', req.user.id)
+        .limit(1)
+        .maybeSingle();
+      
+      if (storeTemplate) {
+        // ONLY update settings_id, do NOT touch store_subdomain or any other store fields
+        await supabaseAdmin
+          .from('store_templates')
+          .update({ settings_id: data.id })
+          .eq('id', storeTemplate.id);
+        
+        console.log('[Settings] ✅ settings_id linked, store_subdomain preserved:', storeTemplate.store_subdomain);
+      }
+    } else {
+      // Store information was updated - sync with store_templates (with subdomain preservation)
+      console.log('[Settings] Store information updated - syncing with store_templates');
+      
       // ALWAYS fetch current subdomain first to preserve it
       const { data: currentTemplate } = await supabaseAdmin
         .from('store_templates')
@@ -269,23 +298,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
       if (store_url !== undefined && store_url !== null && String(store_url).trim() !== '') {
         // New subdomain provided
         storeSubdomainToUse = String(store_url).trim();
+        console.log('[Settings] Using new subdomain:', storeSubdomainToUse);
       } else {
         // Preserve existing subdomain (CRITICAL for payment method image updates)
         storeSubdomainToUse = currentTemplate?.store_subdomain || null;
+        console.log('[Settings] Preserving existing subdomain:', storeSubdomainToUse);
       }
 
-      // Only sync store template if we have store-related data OR if we need to link settings_id
-      // When ONLY payment_method_image is updated, we still need to link settings_id
-      if (store_name !== undefined || store_description !== undefined || store_url !== undefined || payment_method_image !== undefined) {
-        await syncStoreTemplate(req.user.id, {
-          store_name: data.store_name,
-          store_description: data.store_description,
-          store_subdomain: storeSubdomainToUse // Always use preserved or new value
-        }, data.id);
-      }
+      await syncStoreTemplate(req.user.id, {
+        store_name: data.store_name,
+        store_description: data.store_description,
+        store_subdomain: storeSubdomainToUse // Always use preserved or new value
+      }, data.id);
       
-      // Ensure settings_id is always linked when payment_method_image is updated
-      // This is CRITICAL for the payment method image to show in the checkout page
+      // Also ensure settings_id is linked if payment_method_image was updated
       if (payment_method_image !== undefined) {
         const { data: storeTemplate } = await supabaseAdmin
           .from('store_templates')
@@ -365,49 +391,81 @@ router.put('/store', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    // Sync with store_templates - ALWAYS update settings_id to ensure payment_method_image is linked
-    // CRITICAL: Preserve existing subdomain if a new one is not provided
-    // This prevents the store from becoming "not found" when only payment_method_image is updated
-    const { data: currentTemplate } = await supabaseAdmin
-      .from('store_templates')
-      .select('store_subdomain')
-      .eq('user_id', req.user.id)
-      .limit(1)
-      .maybeSingle();
+    // CRITICAL: Separate logic for store data updates vs payment_method_image updates
+    // When ONLY payment_method_image is updated, we should NOT touch store_subdomain at all
     
-    // Determine which subdomain to use:
-    // 1. If store_url was explicitly provided and is not empty, use it
-    // 2. Otherwise, preserve the existing subdomain from store_templates
-    let storeSubdomainToUse = null;
-    if (store_url !== undefined && store_url !== null && String(store_url).trim() !== '') {
-      // New subdomain provided
-      storeSubdomainToUse = String(store_url).trim();
-    } else {
-      // Preserve existing subdomain (CRITICAL for payment method image updates)
-      storeSubdomainToUse = currentTemplate?.store_subdomain || null;
-    }
-
-    await syncStoreTemplate(req.user.id, {
-      store_name,
-      store_description,
-      store_subdomain: storeSubdomainToUse // Always use preserved or new value
-    }, data.id);
+    const isOnlyPaymentMethodUpdate = 
+      payment_method_image !== undefined && 
+      store_name === undefined && 
+      store_description === undefined && 
+      store_url === undefined;
     
-    // Also ensure payment_method_image sync if it was updated
-    if (payment_method_image !== undefined) {
-      // Force update settings_id in store_templates to ensure link is maintained
+    if (isOnlyPaymentMethodUpdate) {
+      // ONLY updating payment_method_image - just link settings_id, don't touch store data
+      console.log('[Settings /store] Only payment_method_image updated - preserving store_subdomain');
       const { data: storeTemplate } = await supabaseAdmin
         .from('store_templates')
-        .select('id')
+        .select('id, store_subdomain')
         .eq('user_id', req.user.id)
         .limit(1)
         .maybeSingle();
       
       if (storeTemplate) {
+        // ONLY update settings_id, do NOT touch store_subdomain or any other store fields
         await supabaseAdmin
           .from('store_templates')
           .update({ settings_id: data.id })
           .eq('id', storeTemplate.id);
+        
+        console.log('[Settings /store] ✅ settings_id linked, store_subdomain preserved:', storeTemplate.store_subdomain);
+      }
+    } else {
+      // Store information was updated - sync with store_templates (with subdomain preservation)
+      console.log('[Settings /store] Store information updated - syncing with store_templates');
+      
+      // ALWAYS fetch current subdomain first to preserve it
+      const { data: currentTemplate } = await supabaseAdmin
+        .from('store_templates')
+        .select('store_subdomain')
+        .eq('user_id', req.user.id)
+        .limit(1)
+        .maybeSingle();
+      
+      // Determine which subdomain to use:
+      // 1. If store_url was explicitly provided and is not empty, use it
+      // 2. Otherwise, preserve the existing subdomain from store_templates
+      let storeSubdomainToUse = null;
+      if (store_url !== undefined && store_url !== null && String(store_url).trim() !== '') {
+        // New subdomain provided
+        storeSubdomainToUse = String(store_url).trim();
+        console.log('[Settings /store] Using new subdomain:', storeSubdomainToUse);
+      } else {
+        // Preserve existing subdomain (CRITICAL for payment method image updates)
+        storeSubdomainToUse = currentTemplate?.store_subdomain || null;
+        console.log('[Settings /store] Preserving existing subdomain:', storeSubdomainToUse);
+      }
+
+      await syncStoreTemplate(req.user.id, {
+        store_name,
+        store_description,
+        store_subdomain: storeSubdomainToUse // Always use preserved or new value
+      }, data.id);
+      
+      // Also ensure settings_id is linked if payment_method_image was updated
+      if (payment_method_image !== undefined) {
+        const { data: storeTemplate } = await supabaseAdmin
+          .from('store_templates')
+          .select('id')
+          .eq('user_id', req.user.id)
+          .limit(1)
+          .maybeSingle();
+        
+        if (storeTemplate) {
+          await supabaseAdmin
+            .from('store_templates')
+            .update({ settings_id: data.id })
+            .eq('id', storeTemplate.id);
+        }
       }
     }
 
