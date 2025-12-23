@@ -368,6 +368,7 @@ const StoreSetting = () => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       
       // If settings ID exists, update it
+      // CRITICAL: Only send payment_method_image, do NOT send store_url to preserve existing subdomain
       if (settings.id) {
         const response = await fetch(`${apiUrl}/api/settings/${settings.id}`, {
           method: 'PUT',
@@ -377,6 +378,7 @@ const StoreSetting = () => {
           },
           body: JSON.stringify({
             payment_method_image: imageUrl,
+            // Explicitly do NOT send store_url to preserve existing subdomain
           }),
         });
 
@@ -392,6 +394,8 @@ const StoreSetting = () => {
         }
       } else {
         // If no settings exist, use the store endpoint
+        // CRITICAL: Only send store_name and payment_method_image, do NOT send store_url
+        // The backend will preserve the existing subdomain automatically
         const response = await fetch(`${apiUrl}/api/settings/store`, {
           method: 'PUT',
           headers: {
@@ -401,6 +405,7 @@ const StoreSetting = () => {
           body: JSON.stringify({
             store_name: settings.store_name || 'My Store',
             payment_method_image: imageUrl,
+            // Explicitly do NOT send store_url to preserve existing subdomain
           }),
         });
 
