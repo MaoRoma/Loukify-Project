@@ -6,25 +6,60 @@ const router = express.Router();
 
 /**
  * Helper: Upsert payment image into payment_images table
+ * This ensures only one active payment image per store template
  */
 async function upsertPaymentImage({ userId, storeTemplateId, settingsId, imageUrl }) {
-  if (!imageUrl || !userId) return;
-
-  // Deactivate previous active images for this store_template to keep one active
-  if (storeTemplateId) {
-    await supabaseAdmin
-      .from('payment_images')
-      .update({ is_active: false })
-      .eq('store_template_id', storeTemplateId);
+  if (!imageUrl || !userId) {
+    console.warn('[upsertPaymentImage] Missing required parameters:', { userId, imageUrl });
+    return;
   }
 
-  await supabaseAdmin.from('payment_images').insert({
-    user_id: userId,
-    store_template_id: storeTemplateId || null,
-    settings_id: settingsId || null,
-    image_url: imageUrl,
-    is_active: true
-  });
+  try {
+    // Deactivate previous active images for this store_template to keep one active
+    if (storeTemplateId) {
+      const { error: deactivateError } = await supabaseAdmin
+        .from('payment_images')
+        .update({ is_active: false })
+        .eq('store_template_id', storeTemplateId)
+        .eq('is_active', true);
+      
+      if (deactivateError) {
+        console.warn('[upsertPaymentImage] Error deactivating old images:', deactivateError);
+        // Continue anyway - might be first image
+      } else {
+        console.log('[upsertPaymentImage] ✅ Deactivated previous active images for store_template_id:', storeTemplateId);
+      }
+    }
+
+    // Insert new active payment image
+    const { data, error: insertError } = await supabaseAdmin
+      .from('payment_images')
+      .insert({
+        user_id: userId,
+        store_template_id: storeTemplateId || null,
+        settings_id: settingsId || null,
+        image_url: imageUrl,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('[upsertPaymentImage] ❌ Error inserting payment image:', insertError);
+      throw insertError;
+    }
+
+    console.log('[upsertPaymentImage] ✅ Successfully saved payment image to payment_images table:', {
+      id: data?.id,
+      store_template_id: storeTemplateId,
+      image_url: imageUrl
+    });
+
+    return data;
+  } catch (error) {
+    console.error('[upsertPaymentImage] ❌ Failed to upsert payment image:', error);
+    throw error;
+  }
 }
 
 /**
@@ -358,15 +393,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
             .eq('id', storeTemplate.id);
 
           // Upsert payment image into payment_images table
-          await supabaseAdmin
-            .from('payment_images')
-            .insert({
-              user_id: req.user.id,
-              store_template_id: storeTemplate.id,
-              settings_id: data.id,
-              image_url: payment_method_image,
-              is_active: true
-            });
+          await upsertPaymentImage({
+            userId: req.user.id,
+            storeTemplateId: storeTemplate.id,
+            settingsId: data.id,
+            imageUrl: payment_method_image
+          });
         }
       }
     }
@@ -462,15 +494,12 @@ router.put('/store', authenticateToken, async (req, res) => {
         console.log('[Settings /store] ✅ settings_id linked, store_subdomain preserved:', storeTemplate.store_subdomain);
 
         // Upsert payment image into payment_images table
-        await supabaseAdmin
-          .from('payment_images')
-          .insert({
-            user_id: req.user.id,
-            store_template_id: storeTemplate.id,
-            settings_id: data.id,
-            image_url: payment_method_image,
-            is_active: true
-          });
+        await upsertPaymentImage({
+          userId: req.user.id,
+          storeTemplateId: storeTemplate.id,
+          settingsId: data.id,
+          imageUrl: payment_method_image
+        });
       }
     } else {
       // Store information was updated - sync with store_templates (with subdomain preservation)
@@ -520,15 +549,12 @@ router.put('/store', authenticateToken, async (req, res) => {
             .eq('id', storeTemplate.id);
 
           // Upsert payment image into payment_images table
-          await supabaseAdmin
-            .from('payment_images')
-            .insert({
-              user_id: req.user.id,
-              store_template_id: storeTemplate.id,
-              settings_id: data.id,
-              image_url: payment_method_image,
-              is_active: true
-            });
+          await upsertPaymentImage({
+            userId: req.user.id,
+            storeTemplateId: storeTemplate.id,
+            settingsId: data.id,
+            imageUrl: payment_method_image
+          });
         }
       }
     }
