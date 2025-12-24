@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, ShoppingCart, User, Heart, X } from "lucide-react";
+import { Search, ShoppingCart, User, Heart, X, Menu } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import type {
   ThemeColors,
@@ -44,6 +44,7 @@ export function PreviewHeader({
   const { wishlistCount } = useWishlist();
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   // Filter products based on search query
@@ -103,7 +104,7 @@ export function PreviewHeader({
       {/* Announcement Bar */}
       {header.showAnnouncement && (
         <div
-          className="px-6 py-2 text-center text-sm"
+          className="px-4 sm:px-6 py-2 text-center text-xs sm:text-sm"
           style={{
             backgroundColor: colors.primary,
             color: colors.background,
@@ -115,9 +116,9 @@ export function PreviewHeader({
       )}
 
       {/* Navigation */}
-      <div className="border-b px-6 py-4 flex items-center justify-between">
+      <div className="border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between relative">
         <div
-          className="font-bold text-xl"
+          className="font-bold text-lg sm:text-xl"
           style={{
             color: colors.text,
             fontFamily: getFontFamilyStyle(typography.headingFont),
@@ -125,9 +126,25 @@ export function PreviewHeader({
         >
           {header.logoText}
         </div>
-        <div className="flex items-center gap-6">
+        
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="md:hidden p-2 hover:opacity-70 transition-opacity min-h-[44px] min-w-[44px] flex items-center justify-center"
+          style={{ color: colors.text }}
+          aria-label="Toggle menu"
+        >
+          {isMobileMenuOpen ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <Menu className="w-6 h-6" />
+          )}
+        </button>
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-6">
           <nav
-            className="hidden md:flex items-center gap-6 text-sm"
+            className="flex items-center gap-4 sm:gap-6 text-sm"
             style={{
               fontSize: `${typography.bodySize}px`,
               fontFamily: getFontFamilyStyle(typography.bodyFont),
@@ -145,14 +162,14 @@ export function PreviewHeader({
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-4 relative">
+          <div className="flex items-center gap-3 sm:gap-4 relative">
             {/* Inline Search */}
             {header.showSearchBar && (
               <div ref={searchRef} className="relative">
                 {!showSearch ? (
                   <button
                     onClick={handleSearchToggle}
-                    className="hover:opacity-70 transition-opacity"
+                    className="hover:opacity-70 transition-opacity min-h-[44px] min-w-[44px] flex items-center justify-center"
                     aria-label="Search"
                   >
                     <Search
@@ -169,7 +186,7 @@ export function PreviewHeader({
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search products..."
                         autoFocus
-                        className="w-64 px-4 py-2 pr-10 rounded-md border focus:outline-none focus:ring-2"
+                        className="w-48 sm:w-64 px-4 py-2 pr-10 rounded-md border focus:outline-none focus:ring-2 text-base sm:text-sm min-h-[44px]"
                         style={{
                           borderColor: colors.text + "30",
                           color: colors.text,
@@ -184,7 +201,7 @@ export function PreviewHeader({
                     </div>
                     <button
                       onClick={handleSearchToggle}
-                      className="hover:opacity-70 transition-opacity"
+                      className="hover:opacity-70 transition-opacity min-h-[44px] min-w-[44px] flex items-center justify-center"
                       aria-label="Close search"
                     >
                       <X
@@ -198,7 +215,7 @@ export function PreviewHeader({
                 {/* Search Results Dropdown */}
                 {showSearch && searchQuery.trim() && (
                   <div
-                    className="absolute top-full right-0 mt-2 w-96 max-h-96 overflow-y-auto rounded-lg shadow-2xl border z-50"
+                    className="absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-h-96 overflow-y-auto rounded-lg shadow-2xl border z-50"
                     style={{
                       backgroundColor: colors.background,
                       borderColor: colors.text + "20",
@@ -299,7 +316,7 @@ export function PreviewHeader({
             {header.showWishlistIcon && (
               <button
                 onClick={onWishlistClick}
-                className="relative hover:opacity-70 transition-opacity"
+                className="relative hover:opacity-70 transition-opacity min-h-[44px] min-w-[44px] flex items-center justify-center"
                 aria-label="View wishlist"
               >
                 <Heart
@@ -323,7 +340,7 @@ export function PreviewHeader({
             {/* Cart Icon */}
             <button
               onClick={onCartClick}
-              className="relative hover:opacity-70 transition-opacity"
+              className="relative hover:opacity-70 transition-opacity min-h-[44px] min-w-[44px] flex items-center justify-center"
               aria-label="View cart"
             >
               <ShoppingCart
@@ -344,6 +361,40 @@ export function PreviewHeader({
             </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div
+            className="md:hidden absolute top-full left-0 right-0 border-b shadow-lg z-50"
+            style={{
+              backgroundColor: colors.background,
+              borderColor: colors.secondary,
+            }}
+          >
+            <nav
+              className="flex flex-col p-4 space-y-3"
+              style={{
+                fontSize: `${typography.bodySize}px`,
+                fontFamily: getFontFamilyStyle(typography.bodyFont),
+              }}
+            >
+              {header.navigationItems.map((item, index) => (
+                <a
+                  key={index}
+                  href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
+                  onClick={(e) => {
+                    handleNavClick(e, item);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  style={{ color: colors.text }}
+                  className="py-2 hover:opacity-70 transition-opacity cursor-pointer min-h-[44px] flex items-center"
+                >
+                  {item}
+                </a>
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
     </>
   );

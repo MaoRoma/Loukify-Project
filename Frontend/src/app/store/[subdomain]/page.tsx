@@ -392,20 +392,17 @@ export default function PublicStorePage() {
           />
           {/* Dynamic products from your catalog */}
           {products.length > 0 && (
-            <section className="px-6 py-16 max-w-6xl mx-auto">
+            <section className="px-4 sm:px-6 py-12 sm:py-16 max-w-6xl mx-auto">
               <h2
-                className="text-2xl font-bold mb-6 text-center"
+                className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center"
                 style={{ color: colors.text, fontFamily: typography.headingFont }}
               >
                 Our Products
               </h2>
               <div
-                className="grid gap-6"
+                className="grid gap-4 sm:gap-6"
                 style={{
-                  gridTemplateColumns: `repeat(${Math.min(
-                    products.length,
-                    layout.productsPerRow
-                  )}, minmax(0, 1fr))`,
+                  gridTemplateColumns: `repeat(auto-fill, minmax(150px, 1fr))`,
                 }}
               >
                 {products.map((product) => (
@@ -432,9 +429,9 @@ export default function PublicStorePage() {
                         </svg>
                       )}
                     </div>
-                    <div className="p-4 space-y-1">
+                    <div className="p-3 sm:p-4 space-y-1">
                       <h3
-                        className="font-semibold truncate"
+                        className="font-semibold truncate text-sm sm:text-base"
                         style={{
                           color: colors.text,
                           fontFamily: typography.bodyFont,
@@ -444,7 +441,7 @@ export default function PublicStorePage() {
                         {product.name}
                       </h3>
                       <p
-                        className="font-bold"
+                        className="font-bold text-sm sm:text-base"
                         style={{
                           color: colors.primary,
                           fontSize: `${typography.bodySize}px`,

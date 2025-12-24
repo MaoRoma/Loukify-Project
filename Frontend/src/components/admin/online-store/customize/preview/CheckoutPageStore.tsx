@@ -145,11 +145,11 @@ export function CheckoutPage({
   };
 
   return (
-    <div className="px-6 py-12">
+    <div className="px-4 sm:px-6 py-6 sm:py-12">
       {/* Back to Cart Link */}
       <button
         onClick={onBackToCart}
-        className="flex items-center gap-2 mb-6 hover:opacity-70 transition-opacity"
+        className="flex items-center gap-2 mb-4 sm:mb-6 hover:opacity-70 transition-opacity min-h-[44px]"
         style={{ color: colors.text, fontSize: `${typography.bodySize}px` }}
       >
         <ArrowLeft className="w-4 h-4" />
@@ -157,22 +157,22 @@ export function CheckoutPage({
       </button>
 
       <h1
-        className="text-3xl font-bold mb-8"
+        className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8"
         style={{ fontSize: `${typography.headingSize}px`, color: colors.text }}
       >
         Checkout
       </h1>
 
-      <div className="grid md:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
         {/* Checkout Form */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Contact Information */}
           <div
-            className="border rounded-lg p-6"
+            className="border rounded-lg p-4 sm:p-6"
             style={{ borderColor: colors.secondary }}
           >
             <h2
-              className="font-semibold mb-4"
+              className="font-semibold mb-3 sm:mb-4 text-base sm:text-lg"
               style={{
                 fontSize: `${typography.bodySize * 1.1}px`,
                 color: colors.text,
@@ -180,11 +180,11 @@ export function CheckoutPage({
             >
               Contact Information
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <input
                 type="email"
                 placeholder="Email"
-                className="w-full px-4 py-3 border rounded"
+                className="w-full px-4 py-3 text-base sm:text-sm border rounded min-h-[44px]"
                 style={{
                   borderColor: colors.secondary,
                   fontSize: `${typography.bodySize}px`,
@@ -196,7 +196,7 @@ export function CheckoutPage({
               <input
                 type="tel"
                 placeholder="Phone Number"
-                className="w-full px-4 py-3 border rounded"
+                className="w-full px-4 py-3 text-base sm:text-sm border rounded min-h-[44px]"
                 style={{
                   borderColor: colors.secondary,
                   fontSize: `${typography.bodySize}px`,
@@ -210,11 +210,11 @@ export function CheckoutPage({
 
           {/* Shipping Address */}
           <div
-            className="border rounded-lg p-6"
+            className="border rounded-lg p-4 sm:p-6"
             style={{ borderColor: colors.secondary }}
           >
             <h2
-              className="font-semibold mb-4"
+              className="font-semibold mb-3 sm:mb-4 text-base sm:text-lg"
               style={{
                 fontSize: `${typography.bodySize * 1.1}px`,
                 color: colors.text,
@@ -222,11 +222,11 @@ export function CheckoutPage({
             >
               Shipping Address
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <input
                 type="text"
                 placeholder="Full Name"
-                className="w-full px-4 py-3 border rounded"
+                className="w-full px-4 py-3 text-base sm:text-sm border rounded min-h-[44px]"
                 style={{
                   borderColor: colors.secondary,
                   fontSize: `${typography.bodySize}px`,
@@ -238,7 +238,7 @@ export function CheckoutPage({
               <input
                 type="text"
                 placeholder="Address"
-                className="w-full px-4 py-3 border rounded"
+                className="w-full px-4 py-3 text-base sm:text-sm border rounded min-h-[44px]"
                 style={{
                   borderColor: colors.secondary,
                   fontSize: `${typography.bodySize}px`,
@@ -250,7 +250,7 @@ export function CheckoutPage({
               <input
                 type="text"
                 placeholder="City"
-                className="w-full px-4 py-3 border rounded"
+                className="w-full px-4 py-3 text-base sm:text-sm border rounded min-h-[44px]"
                 style={{
                   borderColor: colors.secondary,
                   fontSize: `${typography.bodySize}px`,
@@ -264,11 +264,11 @@ export function CheckoutPage({
 
           {/* Payment Method */}
           <div
-            className="border rounded-lg p-6"
+            className="border rounded-lg p-4 sm:p-6"
             style={{ borderColor: colors.secondary }}
           >
             <h2
-              className="font-semibold mb-4"
+              className="font-semibold mb-3 sm:mb-4 text-base sm:text-lg"
               style={{
                 fontSize: `${typography.bodySize * 1.1}px`,
                 color: colors.text,
@@ -325,7 +325,7 @@ export function CheckoutPage({
                     console.log('[CheckoutPage] User clicked ABA Bank button - showing QR code');
                     setShowPaymentImage(true);
                   }}
-                  className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+                  className="w-full px-4 py-3 border rounded flex items-center justify-center gap-2 hover:opacity-80 transition-opacity cursor-pointer min-h-[44px]"
                   style={{
                     borderColor: colors.secondary,
                     fontSize: `${typography.bodySize}px`,
@@ -367,13 +367,13 @@ export function CheckoutPage({
         </div>
 
         {/* Order Summary */}
-        <div className="md:col-span-1">
+        <div className="lg:col-span-1">
           <div
-            className="border rounded-lg p-6 sticky top-4"
+            className="border rounded-lg p-4 sm:p-6 lg:sticky lg:top-4"
             style={{ borderColor: colors.secondary }}
           >
             <h2
-              className="text-xl font-bold mb-6"
+              className="text-lg sm:text-xl font-bold mb-4 sm:mb-6"
               style={{
                 fontSize: `${typography.headingSize * 0.6}px`,
                 color: colors.text,
@@ -420,7 +420,7 @@ export function CheckoutPage({
               </div>
             )}
             <button
-              className="w-full py-3 font-medium transition-opacity hover:opacity-90"
+              className="w-full py-3 font-medium transition-opacity hover:opacity-90 min-h-[44px] text-base sm:text-sm"
               style={{
                 backgroundColor: colors.primary,
                 color: colors.background,

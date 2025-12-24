@@ -28,16 +28,16 @@ export function CartPage({
     useCart();
 
   return (
-    <div className="px-6 py-12">
+    <div className="px-4 sm:px-6 py-6 sm:py-12">
       <h1
-        className="text-3xl font-bold mb-8"
+        className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8"
         style={{ fontSize: `${typography.headingSize}px`, color: colors.text }}
       >
         Shopping Cart
       </h1>
 
       {cartItems.length === 0 ? (
-        <div className="text-center py-16">
+        <div className="text-center py-12 sm:py-16">
           <ShoppingCart
             className="w-24 h-24 mx-auto mb-4"
             style={{ color: colors.secondary, opacity: 0.3 }}
@@ -62,7 +62,7 @@ export function CartPage({
           </p>
           <button
             onClick={onContinueShopping}
-            className="px-8 py-3 font-medium transition-opacity hover:opacity-90"
+            className="px-6 sm:px-8 py-3 font-medium transition-opacity hover:opacity-90 min-h-[44px] text-base sm:text-sm"
             style={{
               backgroundColor: colors.primary,
               color: colors.background,
@@ -74,16 +74,16 @@ export function CartPage({
           </button>
         </div>
       ) : (
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Cart Items */}
-          <div className="md:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-4">
             {cartItems.map((item) => (
               <div
                 key={item.id}
-                className="border rounded-lg p-4 flex gap-4"
+                className="border rounded-lg p-3 sm:p-4 flex gap-3 sm:gap-4"
                 style={{ borderColor: colors.secondary }}
               >
-                <div className="w-24 h-24 bg-gray-100 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {item.image ? (
                     <img
                       src={item.image}
@@ -124,8 +124,9 @@ export function CartPage({
                     </div>
                     <button
                       onClick={() => removeFromCart(item.id)}
-                      className="p-1 hover:bg-gray-100 rounded"
+                      className="p-2 hover:bg-gray-100 rounded min-h-[44px] min-w-[44px] flex items-center justify-center"
                       style={{ color: colors.secondary }}
+                      aria-label="Remove item"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -133,9 +134,10 @@ export function CartPage({
                   <div className="flex items-center gap-2 mt-4">
                     <button
                       onClick={() => updateQuantity(item.id, -1)}
-                      className="p-1 border rounded hover:bg-gray-50"
+                      className="p-2 border rounded hover:bg-gray-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
                       style={{ borderColor: colors.secondary }}
                       disabled={(item.quantity || 1) <= 1}
+                      aria-label="Decrease quantity"
                     >
                       <Minus
                         className="w-4 h-4"
@@ -143,7 +145,7 @@ export function CartPage({
                       />
                     </button>
                     <span
-                      className="px-3 py-1 border rounded text-center min-w-[3rem]"
+                      className="px-3 sm:px-4 py-2 border rounded text-center min-w-[3rem] min-h-[44px] flex items-center justify-center"
                       style={{
                         borderColor: colors.secondary,
                         fontSize: `${typography.bodySize}px`,
@@ -154,8 +156,9 @@ export function CartPage({
                     </span>
                     <button
                       onClick={() => updateQuantity(item.id, 1)}
-                      className="p-1 border rounded hover:bg-gray-50"
+                      className="p-2 border rounded hover:bg-gray-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
                       style={{ borderColor: colors.secondary }}
+                      aria-label="Increase quantity"
                     >
                       <Plus
                         className="w-4 h-4"
@@ -169,13 +172,13 @@ export function CartPage({
           </div>
 
           {/* Summary */}
-          <div className="md:col-span-1">
+          <div className="lg:col-span-1">
             <div
-              className="border rounded-lg p-6 sticky top-4"
+              className="border rounded-lg p-4 sm:p-6 lg:sticky lg:top-4"
               style={{ borderColor: colors.secondary }}
             >
               <h2
-                className="text-xl font-bold mb-6"
+                className="text-lg sm:text-xl font-bold mb-4 sm:mb-6"
                 style={{
                   fontSize: `${typography.headingSize * 0.6}px`,
                   color: colors.text,
@@ -215,7 +218,7 @@ export function CartPage({
               </div>
               <button
                 onClick={onCheckout}
-                className="w-full py-3 font-medium mb-3 transition-opacity hover:opacity-90"
+                className="w-full py-3 font-medium mb-3 transition-opacity hover:opacity-90 min-h-[44px] text-base sm:text-sm"
                 style={{
                   backgroundColor: colors.primary,
                   color: colors.background,
@@ -227,7 +230,7 @@ export function CartPage({
               </button>
               <button
                 onClick={onContinueShopping}
-                className="w-full py-3 font-medium border transition-colors hover:bg-gray-50"
+                className="w-full py-3 font-medium border transition-colors hover:bg-gray-50 min-h-[44px] text-base sm:text-sm"
                 style={{
                   borderColor: colors.text,
                   color: colors.text,

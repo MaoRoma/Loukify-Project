@@ -77,11 +77,11 @@ export function ProductDetailPage({
   };
 
   return (
-    <div className="px-6 py-12">
+    <div className="px-4 sm:px-6 py-6 sm:py-12">
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 mb-6 hover:opacity-70 transition-opacity"
+        className="flex items-center gap-2 mb-4 sm:mb-6 hover:opacity-70 transition-opacity min-h-[44px]"
         style={{ color: colors.text, fontSize: `${typography.bodySize}px` }}
       >
         <ArrowLeft className="w-4 h-4" />
@@ -89,7 +89,7 @@ export function ProductDetailPage({
       </button>
 
       {/* Product Detail */}
-      <div className="grid md:grid-cols-2 gap-8 md:gap-12">
+      <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
         {/* Left: Product Images */}
         <div className="space-y-4">
           {/* Main Image */}
@@ -117,7 +117,7 @@ export function ProductDetailPage({
         </div>
 
         {/* Right: Product Information */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Product Title & Category */}
           <div>
             {product.category && (
@@ -132,7 +132,7 @@ export function ProductDetailPage({
               </p>
             )}
             <h1
-              className="font-bold mb-3"
+              className="font-bold mb-3 text-xl sm:text-2xl md:text-3xl"
               style={{
                 fontSize: `${typography.headingSize * 0.8}px`,
                 color: colors.text,
@@ -235,14 +235,14 @@ export function ProductDetailPage({
               <div className="flex items-center border rounded-lg" style={{ borderColor: colors.secondary }}>
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-3 hover:bg-gray-50 transition-colors"
+                  className="p-3 hover:bg-gray-50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                   style={{ color: colors.text }}
                   disabled={quantity <= 1}
                 >
                   <Minus className="w-4 h-4" />
                 </button>
                 <span
-                  className="px-6 py-2 min-w-[60px] text-center font-medium"
+                  className="px-4 sm:px-6 py-2 min-w-[60px] text-center font-medium"
                   style={{
                     fontSize: `${typography.bodySize}px`,
                     color: colors.text,
@@ -252,7 +252,7 @@ export function ProductDetailPage({
                 </span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="p-3 hover:bg-gray-50 transition-colors"
+                  className="p-3 hover:bg-gray-50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                   style={{ color: colors.text }}
                 >
                   <Plus className="w-4 h-4" />
@@ -265,7 +265,7 @@ export function ProductDetailPage({
           <div className="flex gap-3">
             <button
               onClick={handleAddToCart}
-              className="flex-1 py-3 px-6 font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 sm:px-6 font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2 min-h-[44px] text-base sm:text-sm"
               style={{
                 backgroundColor: colors.primary,
                 color: colors.background,
@@ -274,11 +274,12 @@ export function ProductDetailPage({
               }}
             >
               <ShoppingCart className="w-5 h-5" />
-              Add to Cart
+              <span className="hidden sm:inline">Add to Cart</span>
+              <span className="sm:hidden">Add</span>
             </button>
             <button
               onClick={handleWishlistToggle}
-              className="p-3 border-2 transition-all hover:opacity-80"
+              className="p-3 border-2 transition-all hover:opacity-80 min-h-[44px] min-w-[44px] flex items-center justify-center"
               style={{
                 borderColor: isWishlisted ? colors.primary : colors.secondary,
                 backgroundColor: isWishlisted ? colors.primary : "transparent",
