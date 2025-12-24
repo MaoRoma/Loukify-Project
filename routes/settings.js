@@ -5,6 +5,29 @@ import { authenticateToken } from '../auth/middlewares/authMiddleware.js';
 const router = express.Router();
 
 /**
+ * Helper: Upsert payment image into payment_images table
+ */
+async function upsertPaymentImage({ userId, storeTemplateId, settingsId, imageUrl }) {
+  if (!imageUrl || !userId) return;
+
+  // Deactivate previous active images for this store_template to keep one active
+  if (storeTemplateId) {
+    await supabaseAdmin
+      .from('payment_images')
+      .update({ is_active: false })
+      .eq('store_template_id', storeTemplateId);
+  }
+
+  await supabaseAdmin.from('payment_images').insert({
+    user_id: userId,
+    store_template_id: storeTemplateId || null,
+    settings_id: settingsId || null,
+    image_url: imageUrl,
+    is_active: true
+  });
+}
+
+/**
  * Helper function to sync store settings with store_templates
  * Updates or creates a store template when store settings change
  */
@@ -278,6 +301,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
           .eq('id', storeTemplate.id);
         
         console.log('[Settings] ✅ settings_id linked, store_subdomain preserved:', storeTemplate.store_subdomain);
+
+        // Also upsert into payment_images table
+        await upsertPaymentImage({
+          userId: req.user.id,
+          storeTemplateId: storeTemplate.id,
+          settingsId: data.id,
+          imageUrl: payment_method_image
+        });
       }
     } else {
       // Store information was updated - sync with store_templates (with subdomain preservation)
@@ -325,6 +356,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
             .from('store_templates')
             .update({ settings_id: data.id })
             .eq('id', storeTemplate.id);
+
+          // Upsert payment image into payment_images table
+          await supabaseAdmin
+            .from('payment_images')
+            .insert({
+              user_id: req.user.id,
+              store_template_id: storeTemplate.id,
+              settings_id: data.id,
+              image_url: payment_method_image,
+              is_active: true
+            });
         }
       }
     }
@@ -418,6 +460,17 @@ router.put('/store', authenticateToken, async (req, res) => {
           .eq('id', storeTemplate.id);
         
         console.log('[Settings /store] ✅ settings_id linked, store_subdomain preserved:', storeTemplate.store_subdomain);
+
+        // Upsert payment image into payment_images table
+        await supabaseAdmin
+          .from('payment_images')
+          .insert({
+            user_id: req.user.id,
+            store_template_id: storeTemplate.id,
+            settings_id: data.id,
+            image_url: payment_method_image,
+            is_active: true
+          });
       }
     } else {
       // Store information was updated - sync with store_templates (with subdomain preservation)
@@ -465,6 +518,17 @@ router.put('/store', authenticateToken, async (req, res) => {
             .from('store_templates')
             .update({ settings_id: data.id })
             .eq('id', storeTemplate.id);
+
+          // Upsert payment image into payment_images table
+          await supabaseAdmin
+            .from('payment_images')
+            .insert({
+              user_id: req.user.id,
+              store_template_id: storeTemplate.id,
+              settings_id: data.id,
+              image_url: payment_method_image,
+              is_active: true
+            });
         }
       }
     }

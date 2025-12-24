@@ -103,7 +103,7 @@ export async function GET(
       is_published: storeTemplate.is_published
     });
 
-    // Fetch payment method image from settings - MUST be scoped to this store's user
+    // Fetch payment method image - first check payment_images table, then fallbacks
     let paymentMethodImage = null;
     
     console.log(`[Payment Method] Starting search for store ${subdomain}`, {
@@ -112,8 +112,30 @@ export async function GET(
       user_id: storeTemplate.user_id
     });
     
+    // Method 0: Try payment_images table by store_template_id
+    if (storeTemplate.id) {
+      const { data: paymentImage, error: paymentImageError } = await supabaseAdmin
+        .from('payment_images')
+        .select('image_url')
+        .eq('store_template_id', storeTemplate.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!paymentImageError && paymentImage?.image_url) {
+        const imageUrl = String(paymentImage.image_url).trim();
+        if (imageUrl && imageUrl !== 'null' && imageUrl !== 'undefined') {
+          paymentMethodImage = imageUrl;
+          console.log(`[Payment Method] ✅ Found via payment_images table for store ${subdomain}:`, paymentMethodImage);
+        }
+      } else if (paymentImageError) {
+        console.warn(`[Payment Method] ❌ Error fetching payment_images for store ${subdomain}:`, paymentImageError);
+      }
+    }
+
     // Method 1: Use settings_id if available (most reliable and properly scoped)
-    if (storeTemplate.settings_id) {
+    if (!paymentMethodImage && storeTemplate.settings_id) {
       console.log(`[Payment Method] Method 1: Attempting to fetch via settings_id: ${storeTemplate.settings_id} for store ${subdomain}`);
       const { data: settings, error: settingsError } = await supabaseAdmin
         .from('settings')
