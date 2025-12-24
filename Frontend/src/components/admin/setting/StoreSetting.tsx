@@ -438,12 +438,80 @@ const StoreSetting = () => {
 
       if (!settings.payment_method_image || settings.payment_method_image.trim() === "") {
         alert("Please upload a payment method image before saving.");
+        setIsSavingPayment(false);
         return;
       }
 
       console.log("[StoreSetting] Manually saving payment method image:", settings.payment_method_image);
-      await autoSavePaymentMethodImage(settings.payment_method_image);
-      alert("Payment method saved successfully!");
+      
+      const { supabase } = await import('@/lib/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        alert('Please log in again to save payment method.');
+        setIsSavingPayment(false);
+        return;
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      
+      // Always use the settings ID endpoint if available, otherwise use store endpoint
+      if (settings.id) {
+        const response = await fetch(`${apiUrl}/api/settings/${settings.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            payment_method_image: settings.payment_method_image,
+            // Do NOT send store_url to preserve existing subdomain
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            console.log("[StoreSetting] ✅ Payment method image saved successfully");
+            setSettings(data.data); // Update with latest data
+            alert("Payment method saved successfully!");
+          } else {
+            throw new Error(data.error || 'Failed to save payment method');
+          }
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to save payment method');
+        }
+      } else {
+        // No settings ID - use store endpoint
+        const response = await fetch(`${apiUrl}/api/settings/store`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            store_name: settings.store_name || 'My Store',
+            payment_method_image: settings.payment_method_image,
+            // Do NOT send store_url to preserve existing subdomain
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            console.log("[StoreSetting] ✅ Payment method image saved successfully");
+            setSettings(data.data); // Update with latest data including ID
+            alert("Payment method saved successfully!");
+          } else {
+            throw new Error(data.error || 'Failed to save payment method');
+          }
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to save payment method');
+        }
+      }
     } catch (error: any) {
       console.error("[StoreSetting] Error saving payment method:", error);
       alert(error?.message || "Failed to save payment method. Please try again.");

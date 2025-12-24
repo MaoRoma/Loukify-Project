@@ -337,13 +337,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
         
         console.log('[Settings] ✅ settings_id linked, store_subdomain preserved:', storeTemplate.store_subdomain);
 
-        // Also upsert into payment_images table
-        await upsertPaymentImage({
-          userId: req.user.id,
-          storeTemplateId: storeTemplate.id,
-          settingsId: data.id,
-          imageUrl: payment_method_image
-        });
+        // Also upsert into payment_images table (non-blocking - if it fails, settings table still has the image)
+        try {
+          await upsertPaymentImage({
+            userId: req.user.id,
+            storeTemplateId: storeTemplate.id,
+            settingsId: data.id,
+            imageUrl: payment_method_image
+          });
+        } catch (paymentImageError) {
+          // Log error but don't fail the request - settings table has the image as fallback
+          console.warn('[Settings] ⚠️ Failed to save to payment_images table (will use settings table as fallback):', paymentImageError.message);
+        }
       }
     } else {
       // Store information was updated - sync with store_templates (with subdomain preservation)
@@ -392,13 +397,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
             .update({ settings_id: data.id })
             .eq('id', storeTemplate.id);
 
-          // Upsert payment image into payment_images table
-          await upsertPaymentImage({
-            userId: req.user.id,
-            storeTemplateId: storeTemplate.id,
-            settingsId: data.id,
-            imageUrl: payment_method_image
-          });
+          // Upsert payment image into payment_images table (non-blocking)
+          try {
+            await upsertPaymentImage({
+              userId: req.user.id,
+              storeTemplateId: storeTemplate.id,
+              settingsId: data.id,
+              imageUrl: payment_method_image
+            });
+          } catch (paymentImageError) {
+            // Log error but don't fail the request - settings table has the image as fallback
+            console.warn('[Settings] ⚠️ Failed to save to payment_images table (will use settings table as fallback):', paymentImageError.message);
+          }
         }
       }
     }
@@ -493,13 +503,18 @@ router.put('/store', authenticateToken, async (req, res) => {
         
         console.log('[Settings /store] ✅ settings_id linked, store_subdomain preserved:', storeTemplate.store_subdomain);
 
-        // Upsert payment image into payment_images table
-        await upsertPaymentImage({
-          userId: req.user.id,
-          storeTemplateId: storeTemplate.id,
-          settingsId: data.id,
-          imageUrl: payment_method_image
-        });
+        // Upsert payment image into payment_images table (non-blocking)
+        try {
+          await upsertPaymentImage({
+            userId: req.user.id,
+            storeTemplateId: storeTemplate.id,
+            settingsId: data.id,
+            imageUrl: payment_method_image
+          });
+        } catch (paymentImageError) {
+          // Log error but don't fail the request - settings table has the image as fallback
+          console.warn('[Settings /store] ⚠️ Failed to save to payment_images table (will use settings table as fallback):', paymentImageError.message);
+        }
       }
     } else {
       // Store information was updated - sync with store_templates (with subdomain preservation)

@@ -180,26 +180,9 @@ export async function GET(
         if (settings.payment_method_image) {
           const imageUrl = String(settings.payment_method_image).trim();
           if (imageUrl !== '' && imageUrl !== 'null' && imageUrl !== 'undefined') {
-            // Verify this settings belongs to the store's user (double-check for security)
-            try {
-              const { data: user } = await supabaseAdmin.auth.admin.getUserById(storeTemplate.user_id);
-              if (user?.user?.email === settings.email_address) {
-                paymentMethodImage = imageUrl;
-                console.log(`[Payment Method] ✅ FALLBACK 1 SUCCESS: Found via settings_id for store ${subdomain}:`, paymentMethodImage);
-              } else {
-                console.warn(`[Payment Method] ⚠️ FALLBACK 1: Settings email mismatch for store ${subdomain}`, {
-                  settingsEmail: settings.email_address,
-                  storeUserEmail: user?.user?.email
-                });
-                // Still use it if settings_id matches (it's already linked)
-                paymentMethodImage = imageUrl;
-                console.log(`[Payment Method] ✅ FALLBACK 1 SUCCESS (email mismatch ignored): Found via settings_id for store ${subdomain}:`, paymentMethodImage);
-              }
-            } catch (verifyErr) {
-              // If verification fails, still use it if settings_id matches (it's already linked)
-              paymentMethodImage = imageUrl;
-              console.log(`[Payment Method] ✅ FALLBACK 1 SUCCESS (verification skipped): Found via settings_id for store ${subdomain}:`, paymentMethodImage);
-            }
+            // Use the image from settings table (it's already linked via settings_id, so we trust it)
+            paymentMethodImage = imageUrl;
+            console.log(`[Payment Method] ✅ FALLBACK 1 SUCCESS: Found via settings_id for store ${subdomain}:`, paymentMethodImage);
           } else {
             console.warn(`[Payment Method] ⚠️ FALLBACK 1: Settings found but payment_method_image is empty/invalid for store ${subdomain}`, {
               imageUrl,
